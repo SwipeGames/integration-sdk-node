@@ -60,3 +60,24 @@ export interface ErrorResponseWithCodeAndAction {
   action?: "refresh";
   actionData?: string;
 }
+
+// ── Parse + verify result types ──
+
+export interface ParsedRequestOk<T> {
+  ok: true;
+  body: T;
+}
+
+export interface ParsedRequestError {
+  ok: false;
+  error: ErrorResponseWithCodeAndAction;
+}
+
+export type ParsedRequestResult<T> = ParsedRequestOk<T> | ParsedRequestError;
+
+export interface ParsedBalanceOk {
+  ok: true;
+  query: GetBalanceQuery;
+}
+
+export type ParsedBalanceResult = ParsedBalanceOk | ParsedRequestError;

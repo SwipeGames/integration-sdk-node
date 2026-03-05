@@ -26,6 +26,11 @@ export type {
   WinResponse,
   RefundResponse,
   ErrorResponseWithCodeAndAction,
+  ParsedRequestResult,
+  ParsedRequestOk,
+  ParsedRequestError,
+  ParsedBalanceResult,
+  ParsedBalanceOk,
 } from "./handlers/types.js";
 
 // Handler helpers
@@ -37,7 +42,12 @@ export {
   createErrorResponse,
 } from "./handlers/responses.js";
 
-export { verifyRequest, verifyGetBalanceRequest } from "./handlers/middleware.js";
+export {
+  verifyRequest,
+  verifyGetBalanceRequest,
+  parseAndVerifyRequest,
+  parseAndVerifyBalanceRequest,
+} from "./handlers/middleware.js";
 
 // Shared types
 export type { ErrorCode, ErrorAction, PlatformType, User, ErrorResponse } from "./types/common.js";

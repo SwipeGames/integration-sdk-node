@@ -1,4 +1,10 @@
 import { verifySignature, verifyQueryParamsSignature } from "../crypto/verify.js";
+import { createErrorResponse } from "./responses.js";
+import type {
+  ParsedRequestResult,
+  ParsedBalanceResult,
+  GetBalanceQuery,
+} from "./types.js";
 
 /**
  * Verify the signature of an incoming reverse call request body.
@@ -6,7 +12,7 @@ import { verifySignature, verifyQueryParamsSignature } from "../crypto/verify.js
  *
  * @param body - Raw request body string or parsed object
  * @param signatureHeader - Value of X-REQUEST-SIGN header
- * @param apiKey - Your integration API key (integrationApiKey)
+ * @param apiKey - Your API key
  * @returns true if signature is valid
  */
 export function verifyRequest(
@@ -24,7 +30,7 @@ export function verifyRequest(
  *
  * @param queryParams - Flat key-value map of query parameters (e.g. { sessionID: "..." })
  * @param signatureHeader - Value of X-REQUEST-SIGN header
- * @param apiKey - Your integration API key (integrationApiKey)
+ * @param apiKey - Your API key
  * @returns true if signature is valid
  */
 export function verifyGetBalanceRequest(
@@ -34,4 +40,51 @@ export function verifyGetBalanceRequest(
 ): boolean {
   if (!signatureHeader) return false;
   return verifyQueryParamsSignature(queryParams, signatureHeader, apiKey);
+}
+
+/**
+ * Parse and verify an incoming POST reverse call request (bet, win, refund).
+ * Combines signature verification with typed body parsing.
+ *
+ * @param rawBody - Raw request body string
+ * @param signatureHeader - Value of X-REQUEST-SIGN header
+ * @param apiKey - Your API key
+ * @returns `{ ok: true, body: T }` or `{ ok: false, error }` with a pre-built error response
+ */
+export function parseAndVerifyRequest<T>(
+  rawBody: string,
+  signatureHeader: string | undefined,
+  apiKey: string
+): ParsedRequestResult<T> {
+  try {
+    if (!verifyRequest(rawBody, signatureHeader, apiKey)) {
+      return { ok: false, error: createErrorResponse({ message: "Invalid signature" }) };
+    }
+    const body = JSON.parse(rawBody) as T;
+    return { ok: true, body };
+  } catch {
+    return { ok: false, error: createErrorResponse({ message: "Invalid request body" }) };
+  }
+}
+
+/**
+ * Parse and verify an incoming GET /balance request.
+ * Combines signature verification with typed query parsing.
+ *
+ * @param queryParams - Flat key-value map of query parameters
+ * @param signatureHeader - Value of X-REQUEST-SIGN header
+ * @param apiKey - Your API key
+ * @returns `{ ok: true, query: GetBalanceQuery }` or `{ ok: false, error }` with a pre-built error response
+ */
+export function parseAndVerifyBalanceRequest(
+  queryParams: Record<string, string>,
+  signatureHeader: string | undefined,
+  apiKey: string
+): ParsedBalanceResult {
+  if (!verifyGetBalanceRequest(queryParams, signatureHeader, apiKey)) {
+    return { ok: false, error: createErrorResponse({ message: "Invalid signature" }) };
+  }
+
+  const query: GetBalanceQuery = { sessionID: queryParams.sessionID ?? "" };
+  return { ok: true, query };
 }

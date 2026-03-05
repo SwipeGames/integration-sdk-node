@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { verifyRequest, verifyGetBalanceRequest } from "../../src/handlers/middleware.js";
+import {
+  verifyRequest,
+  verifyGetBalanceRequest,
+  parseAndVerifyRequest,
+  parseAndVerifyBalanceRequest,
+} from "../../src/handlers/middleware.js";
 import { createSignature, createQueryParamsSignature } from "../../src/crypto/sign.js";
+import type { BetRequest, RefundRequest } from "../../src/handlers/types.js";
 import {
   createBalanceResponse,
   createBetResponse,
@@ -111,5 +117,110 @@ describe("response builders", () => {
     expect(res).toEqual({ message: "Server error" });
     expect(res.code).toBeUndefined();
     expect(res.action).toBeUndefined();
+  });
+});
+
+describe("parseAndVerifyRequest", () => {
+  it("returns ok with typed body on valid signature", () => {
+    const body: BetRequest = {
+      type: "regular",
+      sessionID: "s1",
+      amount: "10.00",
+      txID: "tx1",
+      roundID: "r1",
+    };
+    const rawBody = JSON.stringify(body);
+    const sig = createSignature(rawBody, API_KEY);
+
+    const result = parseAndVerifyRequest<BetRequest>(rawBody, sig, API_KEY);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.type).toBe("regular");
+      expect(result.body.sessionID).toBe("s1");
+      expect(result.body.amount).toBe("10.00");
+      expect(result.body.txID).toBe("tx1");
+      expect(result.body.roundID).toBe("r1");
+    }
+  });
+
+  it("returns ok with RefundRequest body", () => {
+    const body: RefundRequest = {
+      sessionID: "s1",
+      txID: "tx-refund-1",
+      origTxID: "tx1",
+      amount: "10.00",
+    };
+    const rawBody = JSON.stringify(body);
+    const sig = createSignature(rawBody, API_KEY);
+
+    const result = parseAndVerifyRequest<RefundRequest>(rawBody, sig, API_KEY);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.origTxID).toBe("tx1");
+    }
+  });
+
+  it("returns error on invalid signature", () => {
+    const rawBody = JSON.stringify({ sessionID: "s1" });
+    const result = parseAndVerifyRequest<BetRequest>(rawBody, "bad-sig", API_KEY);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Invalid signature");
+    }
+  });
+
+  it("returns error on missing signature", () => {
+    const rawBody = JSON.stringify({ sessionID: "s1" });
+    const result = parseAndVerifyRequest<BetRequest>(rawBody, undefined, API_KEY);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Invalid signature");
+    }
+  });
+
+  it("returns error on invalid JSON body", () => {
+    const rawBody = "not-json";
+    const result = parseAndVerifyRequest<BetRequest>(rawBody, "some-sig", API_KEY);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Invalid request body");
+    }
+  });
+});
+
+describe("parseAndVerifyBalanceRequest", () => {
+  it("returns ok with typed query on valid signature", () => {
+    const params = { sessionID: "session-abc" };
+    const sig = createQueryParamsSignature(params, API_KEY);
+
+    const result = parseAndVerifyBalanceRequest(params, sig, API_KEY);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.query.sessionID).toBe("session-abc");
+    }
+  });
+
+  it("returns error on invalid signature", () => {
+    const result = parseAndVerifyBalanceRequest({ sessionID: "s1" }, "bad-sig", API_KEY);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Invalid signature");
+    }
+  });
+
+  it("returns error on missing signature", () => {
+    const result = parseAndVerifyBalanceRequest({ sessionID: "s1" }, undefined, API_KEY);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Invalid signature");
+    }
   });
 });
