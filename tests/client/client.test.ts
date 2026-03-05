@@ -7,7 +7,6 @@ const CLIENT_CONFIG = {
   cid: "550e8400-e29b-41d4-a716-446655440000",
   extCid: "test_ext_cid",
   apiKey: "test-api-key",
-  integrationApiKey: "test-int-key",
   env: "staging" as const,
 };
 
@@ -186,9 +185,9 @@ describe("SwipeGamesClient", () => {
   });
 
   describe("verifyReverseCallSignature", () => {
-    it("verifies signature using integrationApiKey", () => {
+    it("verifies signature using apiKey", () => {
       const body = { sessionID: "test", amount: "100.00" };
-      const sig = createSignature(body, CLIENT_CONFIG.integrationApiKey);
+      const sig = createSignature(body, CLIENT_CONFIG.apiKey);
       expect(client.verifyReverseCallSignature(body, sig)).toBe(true);
     });
 
@@ -203,11 +202,11 @@ describe("SwipeGamesClient", () => {
   });
 
   describe("verifyGetBalanceSignature", () => {
-    it("verifies query param signature using integrationApiKey", () => {
+    it("verifies query param signature using apiKey", () => {
       const params = { sessionID: "session-abc" };
       const sig = createQueryParamsSignature(
         params,
-        CLIENT_CONFIG.integrationApiKey
+        CLIENT_CONFIG.apiKey
       );
       expect(client.verifyGetBalanceSignature(params, sig)).toBe(true);
     });

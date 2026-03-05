@@ -5,14 +5,14 @@ export interface SwipeGamesClientConfig {
   cid: string;
   /** Your external client ID */
   extCid: string;
-  /** API key for signing requests TO SwipeGames */
+  /** Shared API key for signing outbound requests and verifying inbound reverse calls */
   apiKey: string;
-  /** API key for verifying signatures FROM SwipeGames (reverse calls) */
-  integrationApiKey: string;
   /** Environment */
   env?: "staging" | "production";
   /** Custom base URL (overrides env) */
   baseUrl?: string;
+  /** Enable debug logging of requests and responses */
+  debug?: boolean;
 }
 
 // ── CreateNewGame ──

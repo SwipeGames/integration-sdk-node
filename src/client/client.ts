@@ -20,14 +20,14 @@ export class SwipeGamesClient {
   private readonly cid: string;
   private readonly extCid: string;
   private readonly apiKey: string;
-  private readonly integrationApiKey: string;
   private readonly baseUrl: string;
+  private readonly debug: boolean;
 
   constructor(config: SwipeGamesClientConfig) {
     this.cid = config.cid;
     this.extCid = config.extCid;
     this.apiKey = config.apiKey;
-    this.integrationApiKey = config.integrationApiKey;
+    this.debug = config.debug ?? false;
 
     if (config.baseUrl) {
       this.baseUrl = config.baseUrl;
@@ -37,6 +37,14 @@ export class SwipeGamesClient {
       if (!url) throw new Error(`Unknown env: ${env}`);
       this.baseUrl = url;
     }
+  }
+
+  private log(...args: unknown[]): void {
+    if (this.debug) console.log("[SwipeGamesSDK]", ...args);
+  }
+
+  private logError(...args: unknown[]): void {
+    if (this.debug) console.error("[SwipeGamesSDK]", ...args);
   }
 
   /** Create a new game session and get the launcher URL. */
@@ -103,18 +111,16 @@ export class SwipeGamesClient {
 
   /**
    * Verify a reverse call signature on a POST request body.
-   * Uses integrationApiKey.
    */
   verifyReverseCallSignature(
     body: string | object,
     signature: string
   ): boolean {
-    return verifySignature(body, signature, this.integrationApiKey);
+    return verifySignature(body, signature, this.apiKey);
   }
 
   /**
    * Verify a reverse call signature on a GET /balance request.
-   * Uses integrationApiKey.
    */
   verifyGetBalanceSignature(
     queryParams: Record<string, string>,
@@ -123,7 +129,7 @@ export class SwipeGamesClient {
     return verifyQueryParamsSignature(
       queryParams,
       signature,
-      this.integrationApiKey
+      this.apiKey
     );
   }
 
@@ -144,16 +150,22 @@ export class SwipeGamesClient {
     }
 
     const signature = createQueryParamsSignature(queryParams, this.apiKey);
+    const fullUrl = url.toString();
 
-    const res = await fetch(url.toString(), {
+    this.log(`GET ${fullUrl}`);
+
+    const res = await fetch(fullUrl, {
       method: "GET",
       headers: {
         "X-REQUEST-SIGN": signature,
       },
     });
 
+    this.log(`GET ${fullUrl} -> ${res.status}`);
+
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({ message: res.statusText }));
+      this.logError(`GET ${fullUrl} error:`, errBody);
       throw new SwipeGamesApiError(res.status, errBody as any);
     }
 
@@ -168,6 +180,9 @@ export class SwipeGamesClient {
     const url = this.baseUrl + path;
     const signature = createSignature(body, this.apiKey);
 
+    this.log(`${method} ${url}`);
+    this.log("Body:", JSON.stringify(body));
+
     const res = await fetch(url, {
       method,
       headers: {
@@ -177,8 +192,11 @@ export class SwipeGamesClient {
       body: JSON.stringify(body),
     });
 
+    this.log(`${method} ${url} -> ${res.status}`);
+
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({ message: res.statusText }));
+      this.logError(`${method} ${url} error:`, errBody);
       throw new SwipeGamesApiError(res.status, errBody as any);
     }
 
