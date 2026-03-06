@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SwipeGamesClient } from "../../src/client/client.js";
-import { SwipeGamesApiError } from "../../src/client/errors.js";
+import { SwipeGamesApiError, SwipeGamesValidationError } from "../../src/client/errors.js";
 import { createSignature, createQueryParamsSignature } from "../../src/crypto/sign.js";
 
 const CLIENT_CONFIG = {
@@ -107,6 +107,25 @@ describe("SwipeGamesClient", () => {
         })
       ).rejects.toThrow(SwipeGamesApiError);
     });
+
+    it("uses statusText when error response is not valid JSON", async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 502,
+        statusText: "Bad Gateway",
+        json: () => Promise.reject(new Error("not json")),
+      });
+
+      await expect(
+        client.createNewGame({
+          gameID: "sg_catch_97",
+          demo: false,
+          platform: "desktop",
+          currency: "USD",
+          locale: "en_us",
+        })
+      ).rejects.toThrow("Bad Gateway");
+    });
   });
 
   describe("getGames", () => {
@@ -182,11 +201,17 @@ describe("SwipeGamesClient", () => {
       expect(sentBody.cID).toBe(CLIENT_CONFIG.cid);
       expect(sentBody.extID).toBe("ext-fr-1");
     });
+
+    it("throws SwipeGamesValidationError when neither id nor extID provided", async () => {
+      await expect(
+        client.cancelFreeRounds({} as any)
+      ).rejects.toThrow(SwipeGamesValidationError);
+    });
   });
 
   describe("verifyReverseCallSignature", () => {
     it("verifies signature using apiKey", () => {
-      const body = { sessionID: "test", amount: "100.00" };
+      const body = JSON.stringify({ sessionID: "test", amount: "100.00" });
       const sig = createSignature(body, CLIENT_CONFIG.apiKey);
       expect(client.verifyReverseCallSignature(body, sig)).toBe(true);
     });
@@ -194,7 +219,7 @@ describe("SwipeGamesClient", () => {
     it("rejects wrong signature", () => {
       expect(
         client.verifyReverseCallSignature(
-          { test: true },
+          '{"test":true}',
           "0000000000000000000000000000000000000000000000000000000000000000"
         )
       ).toBe(false);
@@ -209,6 +234,60 @@ describe("SwipeGamesClient", () => {
         CLIENT_CONFIG.apiKey
       );
       expect(client.verifyGetBalanceSignature(params, sig)).toBe(true);
+    });
+  });
+
+  describe("debug mode", () => {
+    it("logs requests and responses when debug is enabled", async () => {
+      const debugClient = new SwipeGamesClient({ ...CLIENT_CONFIG, debug: true });
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await debugClient.getGames();
+
+      const logMessages = logSpy.mock.calls.map((args) => args.join(" "));
+      expect(logMessages.some((m) => m.includes("[SwipeGamesSDK]") && m.includes("GET"))).toBe(true);
+      logSpy.mockRestore();
+    });
+
+    it("logs errors when debug is enabled and request fails", async () => {
+      const debugClient = new SwipeGamesClient({ ...CLIENT_CONFIG, debug: true });
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ message: "Server error" }),
+      });
+
+      await expect(debugClient.getGames()).rejects.toThrow(SwipeGamesApiError);
+
+      const errorMessages = errorSpy.mock.calls.map((args) => args.join(" "));
+      expect(errorMessages.some((m) => m.includes("[SwipeGamesSDK]") && m.includes("error"))).toBe(true);
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it("does not log when debug is disabled", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames();
+
+      const sdkLogs = logSpy.mock.calls.filter((args) =>
+        args.some((a) => typeof a === "string" && a.includes("[SwipeGamesSDK]"))
+      );
+      expect(sdkLogs).toHaveLength(0);
+      logSpy.mockRestore();
     });
   });
 });

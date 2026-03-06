@@ -1,67 +1,25 @@
-/** Transaction type for bet/win operations. */
-export type TransactionType = "regular" | "free";
+import type { IntegrationTypes } from "@swipegames/public-api";
 
-// ── Requests (SwipeGames → Partner) ──
+// ── Derived from generated TypeScript types ──
+
+export type TransactionType = IntegrationTypes.BetRequestType;
+
+export type BetRequest = IntegrationTypes.BetRequest;
+export type WinRequest = IntegrationTypes.WinRequest;
+export type RefundRequest = IntegrationTypes.RefundRequest;
+
+export type BalanceResponse = IntegrationTypes.BalanceResponse;
+export type BetResponse = IntegrationTypes.BetResponse;
+export type WinResponse = IntegrationTypes.WinResponse;
+export type RefundResponse = IntegrationTypes.RefundResponse;
+
+export type ErrorResponseWithCodeAndAction = IntegrationTypes.ErrorResponseWithCodeAndAction;
+
+// ── Hand-written (not in any OpenAPI spec) ──
 
 export interface GetBalanceQuery {
   sessionID: string;
 }
-
-export interface BetRequest {
-  type: TransactionType;
-  sessionID: string;
-  amount: string;
-  txID: string;
-  roundID: string;
-  frID?: string;
-}
-
-export interface WinRequest {
-  type: TransactionType;
-  sessionID: string;
-  amount: string;
-  txID: string;
-  roundID: string;
-  frID?: string;
-}
-
-export interface RefundRequest {
-  sessionID: string;
-  txID: string;
-  origTxID: string;
-  amount: string;
-}
-
-// ── Responses (Partner → SwipeGames) ──
-
-export interface BalanceResponse {
-  balance: string;
-}
-
-export interface BetResponse {
-  balance: string;
-  txID: string;
-}
-
-export interface WinResponse {
-  balance: string;
-  txID: string;
-}
-
-export interface RefundResponse {
-  balance: string;
-  txID: string;
-}
-
-export interface ErrorResponseWithCodeAndAction {
-  message: string;
-  details?: string;
-  code?: string;
-  action?: "refresh";
-  actionData?: string;
-}
-
-// ── Parse + verify result types ──
 
 export interface ParsedRequestOk<T> {
   ok: true;
@@ -80,4 +38,6 @@ export interface ParsedBalanceOk {
   query: GetBalanceQuery;
 }
 
-export type ParsedBalanceResult = ParsedBalanceOk | ParsedRequestError;
+export type ParsedBalanceError = ParsedRequestError;
+
+export type ParsedBalanceResult = ParsedBalanceOk | ParsedBalanceError;

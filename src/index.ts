@@ -1,6 +1,6 @@
 // Client
 export { SwipeGamesClient } from "./client/client.js";
-export { SwipeGamesApiError } from "./client/errors.js";
+export { SwipeGamesApiError, SwipeGamesValidationError } from "./client/errors.js";
 export type {
   SwipeGamesClientConfig,
   CreateNewGameParams,
@@ -31,6 +31,7 @@ export type {
   ParsedRequestError,
   ParsedBalanceResult,
   ParsedBalanceOk,
+  ParsedBalanceError,
 } from "./handlers/types.js";
 
 // Handler helpers
@@ -57,3 +58,6 @@ export type {
   BetLineInfo,
   BetLineValue,
 } from "./types/games.js";
+
+// Generated Zod schemas and TypeScript types for consumer-side validation
+export { CoreSchemas, IntegrationSchemas, CoreTypes, IntegrationTypes } from "@swipegames/public-api";

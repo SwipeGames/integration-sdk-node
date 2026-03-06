@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { IntegrationSchemas } from "@swipegames/public-api";
 import {
   verifyRequest,
   verifyGetBalanceRequest,
@@ -19,7 +20,7 @@ const API_KEY = "test-integration-key";
 
 describe("verifyRequest", () => {
   it("returns true for valid POST body signature", () => {
-    const body = { type: "regular", sessionID: "s1", amount: "10.00", txID: "tx1", roundID: "r1" };
+    const body = JSON.stringify({ type: "regular", sessionID: "s1", amount: "10.00", txID: "tx1", roundID: "r1" });
     const sig = createSignature(body, API_KEY);
     expect(verifyRequest(body, sig, API_KEY)).toBe(true);
   });
@@ -31,13 +32,13 @@ describe("verifyRequest", () => {
   });
 
   it("returns false for missing signature header", () => {
-    expect(verifyRequest({ test: true }, undefined, API_KEY)).toBe(false);
+    expect(verifyRequest('{"test":true}', undefined, API_KEY)).toBe(false);
   });
 
   it("returns false for invalid signature", () => {
     expect(
       verifyRequest(
-        { test: true },
+        '{"test":true}',
         "0000000000000000000000000000000000000000000000000000000000000000",
         API_KEY
       )
@@ -45,7 +46,7 @@ describe("verifyRequest", () => {
   });
 
   it("returns false for wrong key", () => {
-    const body = { test: true };
+    const body = JSON.stringify({ test: true });
     const sig = createSignature(body, API_KEY);
     expect(verifyRequest(body, sig, "wrong-key")).toBe(false);
   });
@@ -191,6 +192,39 @@ describe("parseAndVerifyRequest", () => {
       expect(result.error.message).toBe("Invalid request body");
     }
   });
+
+  it("validates body against zod schema when provided", () => {
+    const body: BetRequest = {
+      type: "regular",
+      sessionID: "s1",
+      amount: "10.00",
+      txID: "550e8400-e29b-41d4-a716-446655440000",
+      roundID: "660e8400-e29b-41d4-a716-446655440000",
+    };
+    const rawBody = JSON.stringify(body);
+    const sig = createSignature(rawBody, API_KEY);
+
+    const result = parseAndVerifyRequest<BetRequest>(rawBody, sig, API_KEY, IntegrationSchemas.PostBetBody);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.type).toBe("regular");
+      expect(result.body.amount).toBe("10.00");
+    }
+  });
+
+  it("returns error when body fails zod schema validation", () => {
+    const invalidBody = { type: "invalid_type", sessionID: "s1" };
+    const rawBody = JSON.stringify(invalidBody);
+    const sig = createSignature(rawBody, API_KEY);
+
+    const result = parseAndVerifyRequest<BetRequest>(rawBody, sig, API_KEY, IntegrationSchemas.PostBetBody);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Invalid request body");
+    }
+  });
 });
 
 describe("parseAndVerifyBalanceRequest", () => {
@@ -221,6 +255,18 @@ describe("parseAndVerifyBalanceRequest", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.message).toBe("Invalid signature");
+    }
+  });
+
+  it("returns error when sessionID is missing", () => {
+    const params = { other: "value" };
+    const sig = createQueryParamsSignature(params, API_KEY);
+
+    const result = parseAndVerifyBalanceRequest(params, sig, API_KEY);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toBe("Missing sessionID");
     }
   });
 });

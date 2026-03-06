@@ -1,6 +1,8 @@
+import { CoreSchemas } from "@swipegames/public-api";
 import { createSignature, createQueryParamsSignature } from "../crypto/sign.js";
 import { verifySignature, verifyQueryParamsSignature } from "../crypto/verify.js";
-import { SwipeGamesApiError } from "./errors.js";
+import { SwipeGamesApiError, SwipeGamesValidationError } from "./errors.js";
+import type { ErrorResponse } from "../types/common.js";
 import type {
   SwipeGamesClientConfig,
   CreateNewGameParams,
@@ -10,6 +12,12 @@ import type {
   CancelFreeRoundsParams,
 } from "./types.js";
 import type { GameInfo } from "../types/games.js";
+
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as T;
+}
 
 const ENV_URLS: Record<string, string> = {
   staging: "https://staging.platform.0.swipegames.io/api/v1",
@@ -51,22 +59,17 @@ export class SwipeGamesClient {
   async createNewGame(
     params: CreateNewGameParams
   ): Promise<CreateNewGameResponse> {
-    const body = {
+    const body = stripUndefined({
       cID: this.cid,
       extCID: this.extCid,
-      gameID: params.gameID,
-      demo: params.demo,
-      platform: params.platform,
-      currency: params.currency,
-      locale: params.locale,
-      ...(params.sessionID !== undefined && { sessionID: params.sessionID }),
-      ...(params.returnURL !== undefined && { returnURL: params.returnURL }),
-      ...(params.depositURL !== undefined && { depositURL: params.depositURL }),
-      ...(params.initDemoBalance !== undefined && {
-        initDemoBalance: params.initDemoBalance,
-      }),
-      ...(params.user !== undefined && { user: params.user }),
-    };
+      ...params,
+    });
+
+    const parsed = CoreSchemas.PostCreateNewGameBody.safeParse(body);
+    if (!parsed.success) {
+      throw new SwipeGamesValidationError(parsed.error);
+    }
+
     return this.post<CreateNewGameResponse>("/create-new-game", body);
   }
 
@@ -83,29 +86,35 @@ export class SwipeGamesClient {
   async createFreeRounds(
     params: CreateFreeRoundsParams
   ): Promise<CreateFreeRoundsResponse> {
-    const body = {
+    const body = stripUndefined({
       cID: this.cid,
       extCID: this.extCid,
-      extID: params.extID,
-      currency: params.currency,
-      quantity: params.quantity,
-      betLine: params.betLine,
-      validFrom: params.validFrom,
-      ...(params.validUntil !== undefined && { validUntil: params.validUntil }),
-      ...(params.gameIDs !== undefined && { gameIDs: params.gameIDs }),
-      ...(params.userIDs !== undefined && { userIDs: params.userIDs }),
-    };
+      ...params,
+    });
+
+    const parsed = CoreSchemas.PostFreeRoundsBody.safeParse(body);
+    if (!parsed.success) {
+      throw new SwipeGamesValidationError(parsed.error);
+    }
+
     return this.post<CreateFreeRoundsResponse>("/free-rounds", body);
   }
 
   /** Cancel/delete an existing free rounds campaign. */
   async cancelFreeRounds(params: CancelFreeRoundsParams): Promise<void> {
-    const body = {
+    const body = stripUndefined({
       cID: this.cid,
       extCID: this.extCid,
-      ...(params.id !== undefined && { id: params.id }),
-      ...(params.extID !== undefined && { extID: params.extID }),
-    };
+      ...params,
+    });
+
+    const parsed = CoreSchemas.DeleteFreeRoundsBody
+      .refine((b) => b.id || b.extID, { message: "One of id or extID must be provided" })
+      .safeParse(body);
+    if (!parsed.success) {
+      throw new SwipeGamesValidationError(parsed.error);
+    }
+
     await this.request("DELETE", "/free-rounds", body);
   }
 
@@ -113,7 +122,7 @@ export class SwipeGamesClient {
    * Verify a reverse call signature on a POST request body.
    */
   verifyReverseCallSignature(
-    body: string | object,
+    body: string,
     signature: string
   ): boolean {
     return verifySignature(body, signature, this.apiKey);
@@ -164,9 +173,7 @@ export class SwipeGamesClient {
     this.log(`GET ${fullUrl} -> ${res.status}`);
 
     if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ message: res.statusText }));
-      this.logError(`GET ${fullUrl} error:`, errBody);
-      throw new SwipeGamesApiError(res.status, errBody as any);
+      await this.throwApiError(res, `GET ${fullUrl}`);
     }
 
     return res.json() as Promise<T>;
@@ -195,11 +202,20 @@ export class SwipeGamesClient {
     this.log(`${method} ${url} -> ${res.status}`);
 
     if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ message: res.statusText }));
-      this.logError(`${method} ${url} error:`, errBody);
-      throw new SwipeGamesApiError(res.status, errBody as any);
+      await this.throwApiError(res, `${method} ${url}`);
     }
 
     return res;
+  }
+
+  private async throwApiError(res: Response, label: string): Promise<never> {
+    let errBody: ErrorResponse;
+    try {
+      errBody = await res.json() as ErrorResponse;
+    } catch {
+      errBody = { message: res.statusText };
+    }
+    this.logError(`${label} error:`, errBody);
+    throw new SwipeGamesApiError(res.status, errBody);
   }
 }

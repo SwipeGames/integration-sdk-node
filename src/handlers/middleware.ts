@@ -1,3 +1,4 @@
+import type { ZodSchema } from "zod";
 import { verifySignature, verifyQueryParamsSignature } from "../crypto/verify.js";
 import { createErrorResponse } from "./responses.js";
 import type {
@@ -10,13 +11,13 @@ import type {
  * Verify the signature of an incoming reverse call request body.
  * Use this in your POST handler for /bet, /win, /refund endpoints.
  *
- * @param body - Raw request body string or parsed object
+ * @param body - Raw request body string
  * @param signatureHeader - Value of X-REQUEST-SIGN header
  * @param apiKey - Your API key
  * @returns true if signature is valid
  */
 export function verifyRequest(
-  body: string | object,
+  body: string,
   signatureHeader: string | undefined,
   apiKey: string
 ): boolean {
@@ -49,18 +50,29 @@ export function verifyGetBalanceRequest(
  * @param rawBody - Raw request body string
  * @param signatureHeader - Value of X-REQUEST-SIGN header
  * @param apiKey - Your API key
+ * @param schema - Optional Zod schema for runtime validation of the parsed body
  * @returns `{ ok: true, body: T }` or `{ ok: false, error }` with a pre-built error response
  */
 export function parseAndVerifyRequest<T>(
   rawBody: string,
   signatureHeader: string | undefined,
-  apiKey: string
+  apiKey: string,
+  schema?: ZodSchema<T>
 ): ParsedRequestResult<T> {
   try {
     if (!verifyRequest(rawBody, signatureHeader, apiKey)) {
       return { ok: false, error: createErrorResponse({ message: "Invalid signature" }) };
     }
     const body = JSON.parse(rawBody) as T;
+
+    if (schema) {
+      const result = schema.safeParse(body);
+      if (!result.success) {
+        return { ok: false, error: createErrorResponse({ message: "Invalid request body" }) };
+      }
+      return { ok: true, body: result.data };
+    }
+
     return { ok: true, body };
   } catch {
     return { ok: false, error: createErrorResponse({ message: "Invalid request body" }) };
@@ -85,6 +97,9 @@ export function parseAndVerifyBalanceRequest(
     return { ok: false, error: createErrorResponse({ message: "Invalid signature" }) };
   }
 
-  const query: GetBalanceQuery = { sessionID: queryParams.sessionID ?? "" };
+  if (!queryParams.sessionID) {
+    return { ok: false, error: createErrorResponse({ message: "Missing sessionID" }) };
+  }
+  const query: GetBalanceQuery = { sessionID: queryParams.sessionID };
   return { ok: true, query };
 }

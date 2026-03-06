@@ -1,31 +1,6 @@
-import type { PlatformType } from "./common.js";
+import type { CoreTypes } from "@swipegames/public-api";
 
-export interface GameInfoImages {
-  baseURL: string;
-  square: string;
-  horizontal: string;
-  widescreen: string;
-  vertical: string;
-}
-
-export interface BetLineValue {
-  maxBet: string;
-  maxCoeff: string;
-}
-
-export interface BetLineInfo {
-  currency: string;
-  values: BetLineValue[];
-}
-
-export interface GameInfo {
-  id: string;
-  title: string;
-  locales: string[];
-  currencies: string[];
-  platforms: PlatformType[];
-  images: GameInfoImages;
-  hasFreeSpins: boolean;
-  rtp: number;
-  betLines?: BetLineInfo[];
-}
+export type GameInfo = CoreTypes.GameInfo;
+export type GameInfoImages = CoreTypes.GameInfoImages;
+export type BetLineInfo = CoreTypes.BetLineInfo;
+export type BetLineValue = CoreTypes.BetLineValue;

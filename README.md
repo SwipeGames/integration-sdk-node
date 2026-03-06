@@ -1,6 +1,8 @@
 # @swipegames/integration-sdk
 
-Node.js SDK for SwipeGames direct integration partners. Provides a ready-made client for outbound API calls, HMAC+JCS signature utilities, typed request/response interfaces for inbound reverse calls, and response builder helpers.
+Node.js SDK for Swipe Games integrators. Provides a ready-made client for the [Core API](https://swipegames.github.io/public-api/core), HMAC+JCS signature utilities, typed request/response interfaces for the [Integration Adapter API](https://swipegames.github.io/public-api/swipegames-integration) (reverse calls), and response builder helpers.
+
+For full API details, see the [Swipe Games Public API documentation](https://swipegames.github.io/public-api/).
 
 ## Requirements
 
@@ -17,8 +19,8 @@ npm install @swipegames/integration-sdk
 ## Table of Contents
 
 1. [Client Setup](#client-setup)
-2. [Outbound API Calls (Partner → SwipeGames)](#outbound-api-calls-partner--swipegames)
-3. [Inbound Reverse Calls (SwipeGames → Partner)](#inbound-reverse-calls-swipegames--partner)
+2. [Core API (Integrator → Swipe Games)](#core-api-integrator--swipe-games)
+3. [Integration Adapter API (Reverse Calls)](#integration-adapter-api-reverse-calls)
 4. [Error Handling](#error-handling)
 5. [Crypto Utilities](#crypto-utilities)
 6. [Types Reference](#types-reference)
@@ -33,8 +35,8 @@ npm install @swipegames/integration-sdk
 import { SwipeGamesClient } from "@swipegames/integration-sdk";
 
 const client = new SwipeGamesClient({
-  cid: "your-cid-uuid", // SwipeGames-assigned client ID
-  extCid: "your-ext-cid", // Your external client ID
+  cid: "your-cid-uuid", // Swipe Games-assigned Client ID (CID)
+  extCid: "your-ext-cid", // Your External Client ID (ExtCID)
   apiKey: "your-api-key", // Shared secret for signing & verification
   env: "staging", // "staging" | "production"
 });
@@ -44,8 +46,8 @@ const client = new SwipeGamesClient({
 
 | Option    | Type                        | Required | Description                                       |
 | --------- | --------------------------- | -------- | ------------------------------------------------- |
-| `cid`     | `string`                    | Yes      | SwipeGames-assigned client ID (UUID)              |
-| `extCid`  | `string`                    | Yes      | Your external client ID                           |
+| `cid`     | `string`                    | Yes      | Swipe Games-assigned Client ID (CID)              |
+| `extCid`  | `string`                    | Yes      | Your External Client ID (ExtCID)                  |
 | `apiKey`  | `string`                    | Yes      | Shared API key for signing and verification       |
 | `env`     | `"staging" \| "production"` | No       | Environment (defaults to `"staging"`)             |
 | `baseUrl` | `string`                    | No       | Custom base URL (overrides `env`)                 |
@@ -53,24 +55,24 @@ const client = new SwipeGamesClient({
 
 ### Using a custom base URL
 
-If you need to point to a non-standard environment (e.g. dev), use `baseUrl` instead of `env`:
+If you need to point to a non-standard environment use `baseUrl` instead of `env`:
 
 ```typescript
 const client = new SwipeGamesClient({
   cid: "your-cid-uuid",
   extCid: "your-ext-cid",
   apiKey: "your-api-key",
-  baseUrl: "https://dev.platform.1.swipegames.io/api/v1",
+  baseUrl: "https://customenvironment.platform.0.swipegames.io/api/v1",
 });
 ```
 
 ---
 
-## Outbound API Calls (Partner → SwipeGames)
+## Core API (Integrator → Swipe Games)
 
 The client handles request signing automatically via `X-REQUEST-SIGN` header.
 
-### Create a new game session
+### Launch a game
 
 ```typescript
 const { gameURL, gsID } = await client.createNewGame({
@@ -105,6 +107,8 @@ const games = await client.getGames();
 
 ### Create a free rounds campaign
 
+See [Free Rounds](https://swipegames.github.io/public-api/free-rounds) for details on campaign configuration and behavior.
+
 ```typescript
 const { id, extID } = await client.createFreeRounds({
   extID: "campaign-1", // required: your campaign ID
@@ -121,7 +125,7 @@ const { id, extID } = await client.createFreeRounds({
 ### Cancel a free rounds campaign
 
 ```typescript
-// Cancel by SwipeGames ID
+// Cancel by Swipe Games ID
 await client.cancelFreeRounds({ id: "fr-123" });
 
 // Or cancel by your external ID
@@ -130,9 +134,9 @@ await client.cancelFreeRounds({ extID: "campaign-1" });
 
 ---
 
-## Inbound Reverse Calls (SwipeGames → Partner)
+## Integration Adapter API (Reverse Calls)
 
-When a game session is active, SwipeGames sends HTTP requests to your server for balance checks and wallet operations. You must implement 4 endpoints:
+When a game session is active, Swipe Games makes [reverse calls](https://swipegames.github.io/public-api/swipegames-integration) to your server for balance checks and wallet operations. You must implement 4 endpoints:
 
 | Endpoint   | Method | Purpose               |
 | ---------- | ------ | --------------------- |
@@ -140,6 +144,8 @@ When a game session is active, SwipeGames sends HTTP requests to your server for
 | `/bet`     | POST   | Deduct bet amount     |
 | `/win`     | POST   | Credit win amount     |
 | `/refund`  | POST   | Refund a previous bet |
+
+During [free rounds](https://swipegames.github.io/public-api/free-rounds), bet/win requests arrive with `type: "free"` and an `frID` — see the docs for how these should be handled.
 
 The SDK provides everything you need:
 
@@ -162,6 +168,8 @@ import {
   createWinResponse,
   createRefundResponse,
   createErrorResponse,
+  // Zod schemas for optional runtime validation
+  IntegrationSchemas,
 } from "@swipegames/integration-sdk";
 import type {
   BetRequest,
@@ -170,9 +178,13 @@ import type {
 } from "@swipegames/integration-sdk";
 ```
 
-### GET /balance
+### Sample handler implementations
 
-SwipeGames sends `sessionID` as a query parameter with the signature in the `X-REQUEST-SIGN` header.
+The examples below show how to wire the SDK helpers into your endpoint handlers. Functions like `getPlayerBalance()`, `deductFromWallet()`, etc. are **your own logic** — the SDK only handles signature verification, body parsing, and response building.
+
+#### GET /balance
+
+Swipe Games sends `sessionID` as a query parameter with the signature in the `X-REQUEST-SIGN` header.
 
 ```typescript
 function handleGetBalance(
@@ -186,43 +198,45 @@ function handleGetBalance(
     apiKey,
   );
   if (!result.ok) {
-    return { status: 401, body: result.error };
+    return { status: 400, body: result.error };
   }
 
-  // result.query is typed as GetBalanceQuery
+  // Your logic: look up the player's balance using the session ID.
   const balance = getPlayerBalance(result.query.sessionID);
+
+  // use SDK createBalanceResponse to create response
   return { status: 200, body: createBalanceResponse(balance) };
 }
-// Response: { "balance": "1500.00" }
 ```
 
-### POST /bet
+#### POST /bet
 
 ```typescript
 function handleBet(rawBody: string, signatureHeader: string, apiKey: string) {
+  // Optional 4th arg: pass a zod schema for runtime body validation
   const result = parseAndVerifyRequest<BetRequest>(
     rawBody,
     signatureHeader,
     apiKey,
+    IntegrationSchemas.PostBetBody, // optional
   );
   if (!result.ok) {
-    return { status: 401, body: result.error };
+    return { status: 400, body: result.error };
   }
 
-  // result.body is typed as BetRequest:
-  //   { type: "regular" | "free", sessionID, amount, txID, roundID, frID? }
+  // Your logic: deduct the bet amount and record the transaction.
   const newBalance = deductFromWallet(
     result.body.sessionID,
     result.body.amount,
   );
   const partnerTxID = saveTransaction(result.body.txID, result.body.roundID);
 
+  // use SDK createBetResponse to create response
   return { status: 200, body: createBetResponse(newBalance, partnerTxID) };
 }
-// Response: { "balance": "990.00", "txID": "your-tx-123" }
 ```
 
-### POST /win
+#### POST /win
 
 ```typescript
 function handleWin(rawBody: string, signatureHeader: string, apiKey: string) {
@@ -232,19 +246,19 @@ function handleWin(rawBody: string, signatureHeader: string, apiKey: string) {
     apiKey,
   );
   if (!result.ok) {
-    return { status: 401, body: result.error };
+    return { status: 400, body: result.error };
   }
 
-  // result.body: { type, sessionID, amount, txID, roundID, frID? }
+  // Your logic: credit the win amount and record the transaction.
   const newBalance = creditToWallet(result.body.sessionID, result.body.amount);
   const partnerTxID = saveTransaction(result.body.txID, result.body.roundID);
 
+  // use SDK createWinResponse to create response
   return { status: 200, body: createWinResponse(newBalance, partnerTxID) };
 }
-// Response: { "balance": "1040.00", "txID": "your-tx-456" }
 ```
 
-### POST /refund
+#### POST /refund
 
 ```typescript
 function handleRefund(
@@ -258,10 +272,10 @@ function handleRefund(
     apiKey,
   );
   if (!result.ok) {
-    return { status: 401, body: result.error };
+    return { status: 400, body: result.error };
   }
 
-  // result.body: { sessionID, txID, origTxID, amount }
+  // Your logic: refund the original transaction and record the refund.
   const newBalance = refundToWallet(
     result.body.sessionID,
     result.body.origTxID,
@@ -272,9 +286,9 @@ function handleRefund(
     result.body.origTxID,
   );
 
+  // use SDK createRefundResponse to create response
   return { status: 200, body: createRefundResponse(newBalance, partnerTxID) };
 }
-// Response: { "balance": "1000.00", "txID": "your-tx-789" }
 ```
 
 ### Lower-level verification
@@ -305,26 +319,36 @@ client.verifyGetBalanceSignature(queryParams, signatureHeader);
 
 ## Error Handling
 
-### Outbound errors
+### Core API errors
 
-When a SwipeGames API call fails, the SDK throws a `SwipeGamesApiError`:
+The SDK throws two error types:
+
+- **`SwipeGamesApiError`** — API returned a non-2xx response
+- **`SwipeGamesValidationError`** — Request params failed client-side zod validation before the request was sent
 
 ```typescript
-import { SwipeGamesApiError } from "@swipegames/integration-sdk";
+import {
+  SwipeGamesApiError,
+  SwipeGamesValidationError,
+} from "@swipegames/integration-sdk";
 
 try {
   await client.createNewGame({ ... });
 } catch (err) {
+  if (err instanceof SwipeGamesValidationError) {
+    console.error(err.message);    // Validation error summary
+    console.error(err.zodError);   // Full ZodError with field-level details
+  }
   if (err instanceof SwipeGamesApiError) {
-    console.error(err.status);   // HTTP status code (e.g. 401, 404, 500)
-    console.error(err.message);  // Error message from the platform
-    console.error(err.code);     // Optional error code
-    console.error(err.details);  // Optional additional details
+    console.error(err.status);     // HTTP status code (e.g. 401, 404, 500)
+    console.error(err.message);    // Error message from the platform
+    console.error(err.code);       // Optional error code
+    console.error(err.details);    // Optional additional details
   }
 }
 ```
 
-### Inbound error responses
+### Reverse call error responses
 
 When you need to return an error from your reverse call handlers, use `createErrorResponse()`:
 
@@ -351,19 +375,19 @@ createErrorResponse({
 
 #### Available error codes
 
-| Code                      | Description                        |
-| ------------------------- | ---------------------------------- |
-| `game_not_found`          | Game does not exist                |
-| `currency_not_supported`  | Currency not supported             |
-| `locale_not_supported`    | Locale not supported               |
-| `account_blocked`         | Player account is blocked          |
-| `bet_limit`               | Bet limit exceeded                 |
-| `loss_limit`              | Loss limit exceeded                |
-| `time_limit`              | Time limit exceeded                |
-| `insufficient_funds`      | Not enough balance                 |
-| `session_expired`         | Session has expired                |
-| `session_not_found`       | Session does not exist             |
-| `client_connection_error` | Connection error to partner system |
+| Code                      | Description                           |
+| ------------------------- | ------------------------------------- |
+| `game_not_found`          | Game does not exist                   |
+| `currency_not_supported`  | Currency not supported                |
+| `locale_not_supported`    | Locale not supported                  |
+| `account_blocked`         | Player account is blocked             |
+| `bet_limit`               | Bet limit exceeded                    |
+| `loss_limit`              | Loss limit exceeded                   |
+| `time_limit`              | Time limit exceeded                   |
+| `insufficient_funds`      | Not enough balance                    |
+| `session_expired`         | Session has expired                   |
+| `session_not_found`       | Session does not exist                |
+| `client_connection_error` | Connection error to integrator system |
 
 ---
 
@@ -400,180 +424,15 @@ const qsValid = verifyQueryParamsSignature(
 
 ## Types Reference
 
-### Client types
+All request/response types are derived from the [`@swipegames/public-api`](https://github.com/swipegames/public-api) package and re-exported from this SDK. The SDK also re-exports the generated Zod schemas (`CoreSchemas`, `IntegrationSchemas`) and TypeScript types (`CoreTypes`, `IntegrationTypes`) for consumer-side validation.
 
-```typescript
-// Client configuration
-interface SwipeGamesClientConfig {
-  cid: string;
-  extCid: string;
-  apiKey: string;
-  env?: "staging" | "production";
-  baseUrl?: string;
-  debug?: boolean;
-}
-
-// createNewGame() params and response
-interface CreateNewGameParams {
-  gameID: string;
-  demo: boolean;
-  platform: PlatformType; // "desktop" | "mobile"
-  currency: string;
-  locale: string;
-  sessionID?: string;
-  returnURL?: string;
-  depositURL?: string;
-  initDemoBalance?: string;
-  user?: User;
-}
-interface CreateNewGameResponse {
-  gameURL: string;
-  gsID: string;
-}
-
-// createFreeRounds() params and response
-interface CreateFreeRoundsParams {
-  extID: string;
-  currency: string;
-  quantity: number;
-  betLine: number;
-  validFrom: string;
-  validUntil?: string;
-  gameIDs?: string[];
-  userIDs?: string[];
-}
-interface CreateFreeRoundsResponse {
-  id: string;
-  extID: string;
-}
-
-// cancelFreeRounds() params
-interface CancelFreeRoundsParams {
-  id?: string;
-  extID?: string;
-}
-```
-
-### Reverse call types
-
-```typescript
-// Inbound request types
-interface GetBalanceQuery {
-  sessionID: string;
-}
-interface BetRequest {
-  type: TransactionType;
-  sessionID: string;
-  amount: string;
-  txID: string;
-  roundID: string;
-  frID?: string;
-}
-interface WinRequest {
-  type: TransactionType;
-  sessionID: string;
-  amount: string;
-  txID: string;
-  roundID: string;
-  frID?: string;
-}
-interface RefundRequest {
-  sessionID: string;
-  txID: string;
-  origTxID: string;
-  amount: string;
-}
-
-// Inbound response types
-interface BalanceResponse {
-  balance: string;
-}
-interface BetResponse {
-  balance: string;
-  txID: string;
-}
-interface WinResponse {
-  balance: string;
-  txID: string;
-}
-interface RefundResponse {
-  balance: string;
-  txID: string;
-}
-
-type TransactionType = "regular" | "free";
-
-// Parse + verify result types
-type ParsedRequestResult<T> =
-  | { ok: true; body: T }
-  | { ok: false; error: ErrorResponseWithCodeAndAction };
-type ParsedBalanceResult =
-  | { ok: true; query: GetBalanceQuery }
-  | { ok: false; error: ErrorResponseWithCodeAndAction };
-```
-
-### Shared types
-
-```typescript
-type PlatformType = "desktop" | "mobile";
-interface User {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  nickName?: string;
-  country?: string;
-}
-type ErrorCode =
-  | "game_not_found"
-  | "currency_not_supported"
-  | "locale_not_supported"
-  | "account_blocked"
-  | "bet_limit"
-  | "loss_limit"
-  | "time_limit"
-  | "insufficient_funds"
-  | "session_expired"
-  | "session_not_found"
-  | "client_connection_error";
-type ErrorAction = "refresh";
-```
-
-### Game info types
-
-```typescript
-interface GameInfo {
-  id: string;
-  title: string;
-  locales: string[];
-  currencies: string[];
-  platforms: PlatformType[];
-  images: GameInfoImages;
-  hasFreeSpins: boolean;
-  rtp: number;
-  betLines?: BetLineInfo[];
-}
-interface GameInfoImages {
-  baseURL: string;
-  square: string;
-  horizontal: string;
-  widescreen: string;
-  vertical: string;
-}
-interface BetLineInfo {
-  currency: string;
-  values: BetLineValue[];
-}
-interface BetLineValue {
-  maxBet: string;
-  maxCoeff: string;
-}
-```
+See [`src/index.ts`](src/index.ts) for the full list of exported types.
 
 ---
 
 ## Debug Mode
 
-Enable debug logging to see all outbound requests and responses:
+Enable debug logging to see all Core API requests and responses:
 
 ```typescript
 const client = new SwipeGamesClient({

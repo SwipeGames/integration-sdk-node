@@ -1,4 +1,11 @@
-import serialize from "canonicalize";
+import canonicalize from "canonicalize";
+
+// canonicalize ships CJS with `export default` types — under Node16 module
+// resolution the default import resolves to the module namespace, so we
+// need to handle both shapes.
+const serialize = typeof canonicalize === "function"
+  ? canonicalize
+  : (canonicalize as unknown as { default: (input: unknown) => string | undefined }).default;
 
 /**
  * JSON Canonicalization Scheme (RFC 8785).
@@ -6,9 +13,7 @@ import serialize from "canonicalize";
  */
 export function canonicalizeJSON(data: string | object): string {
   const obj = typeof data === "string" ? JSON.parse(data) : data;
-  // canonicalize exports a default function; handle both CJS and ESM interop
-  const fn = typeof serialize === "function" ? serialize : (serialize as any).default;
-  const result: string | undefined = fn(obj);
+  const result = serialize(obj);
   if (result === undefined) {
     throw new Error("Failed to canonicalize JSON");
   }

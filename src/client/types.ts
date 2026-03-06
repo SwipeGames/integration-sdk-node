@@ -1,4 +1,6 @@
-import type { PlatformType, User } from "../types/common.js";
+import type { CoreTypes } from "@swipegames/public-api";
+
+// ── SDK-only config (not in any spec) ──
 
 export interface SwipeGamesClientConfig {
   /** SwipeGames-assigned client ID */
@@ -15,45 +17,22 @@ export interface SwipeGamesClientConfig {
   debug?: boolean;
 }
 
-// ── CreateNewGame ──
+// ── Derived from generated TypeScript types ──
 
-export interface CreateNewGameParams {
-  gameID: string;
-  demo: boolean;
-  platform: PlatformType;
-  currency: string;
-  locale: string;
-  sessionID?: string;
-  returnURL?: string;
-  depositURL?: string;
-  initDemoBalance?: string;
-  user?: User;
-}
+export type CreateNewGameParams = Omit<
+  CoreTypes.CreateNewGameRequest,
+  "cID" | "extCID"
+>;
 
-export interface CreateNewGameResponse {
-  gameURL: string;
-  gsID: string;
-}
+export type CreateNewGameResponse = CoreTypes.CreateNewGameResponse;
 
-// ── FreeRounds ──
+export type CreateFreeRoundsParams = Omit<
+  CoreTypes.CreateFreeRoundsRequest,
+  "cID" | "extCID"
+>;
 
-export interface CreateFreeRoundsParams {
-  extID: string;
-  currency: string;
-  quantity: number;
-  betLine: number;
-  validFrom: string;
-  validUntil?: string;
-  gameIDs?: string[];
-  userIDs?: string[];
-}
+export type CreateFreeRoundsResponse = CoreTypes.CreateFreeRoundsResponse;
 
-export interface CreateFreeRoundsResponse {
-  id: string;
-  extID: string;
-}
-
-export interface CancelFreeRoundsParams {
-  id?: string;
-  extID?: string;
-}
+export type CancelFreeRoundsParams =
+  | { id: string; extID?: string }
+  | { id?: string; extID: string };

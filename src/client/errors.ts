@@ -1,3 +1,4 @@
+import type { ZodError } from "zod";
 import type { ErrorResponse } from "../types/common.js";
 
 export class SwipeGamesApiError extends Error {
@@ -11,5 +12,15 @@ export class SwipeGamesApiError extends Error {
     this.status = status;
     this.code = body.code;
     this.details = body.details;
+  }
+}
+
+export class SwipeGamesValidationError extends Error {
+  public readonly zodError: ZodError;
+
+  constructor(zodError: ZodError) {
+    super(`Validation failed: ${zodError.message}`);
+    this.name = "SwipeGamesValidationError";
+    this.zodError = zodError;
   }
 }
