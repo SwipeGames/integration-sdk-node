@@ -1,17 +1,16 @@
-name: Publish npm package
+name: PR checks
 
 on:
-  push:
+  pull_request:
     branches:
-      - "main"
-  workflow_dispatch:
+      - main
 
 permissions:
   contents: read
-  packages: write
+  packages: read
 
 jobs:
-  build-and-publish:
+  test-and-check-version:
     runs-on: self-hosted
     steps:
       - name: Checkout
@@ -31,7 +30,10 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Check version is not already published
+      - name: Type check
+        run: npm run lint
+
+      - name: Check version has been bumped
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: |
@@ -42,11 +44,3 @@ jobs:
             exit 1
           fi
           echo "Version ${PKG_VERSION} is available."
-
-      - name: Build
-        run: npm run build
-
-      - name: Publish to GitHub Packages
-        env:
-          NODE_AUTH_TOKEN: ${{ github.token }}
-        run: npm publish
