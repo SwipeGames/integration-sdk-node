@@ -33,7 +33,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@swipegames/public-api": "file:../public-api/packages/types",
+    "@swipegames/public-api": "^1.2.4",
     "canonicalize": "^2.0.0",
     "zod": "^3.23.0"
   },
