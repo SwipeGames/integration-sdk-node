@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { IntegrationSchemas } from "@swipegames/public-api";
-import {
-  verifyRequest,
-  verifyGetBalanceRequest,
-  parseAndVerifyRequest,
-  parseAndVerifyBalanceRequest,
-} from "../../src/handlers/middleware.js";
+import { SwipeGamesClient } from "../../src/client/client.js";
 import { createSignature, createQueryParamsSignature } from "../../src/crypto/sign.js";
-import type { BetRequest, RefundRequest } from "../../src/handlers/types.js";
 import {
   createBalanceResponse,
   createBetResponse,
@@ -16,57 +9,64 @@ import {
   createErrorResponse,
 } from "../../src/handlers/responses.js";
 
-const API_KEY = "test-integration-key";
+const INTEGRATION_API_KEY = "test-integration-key";
 
-describe("verifyRequest", () => {
+const client = new SwipeGamesClient({
+  cid: "test-cid",
+  extCid: "test-ext-cid",
+  apiKey: "test-api-key",
+  integrationApiKey: INTEGRATION_API_KEY,
+  env: "staging",
+});
+
+describe("verifyBetRequest", () => {
   it("returns true for valid POST body signature", () => {
-    const body = JSON.stringify({ type: "regular", sessionID: "s1", amount: "10.00", txID: "tx1", roundID: "r1" });
-    const sig = createSignature(body, API_KEY);
-    expect(verifyRequest(body, sig, API_KEY)).toBe(true);
+    const body = JSON.stringify({ type: "regular", sessionID: "s1", amount: "10.00", txID: "550e8400-e29b-41d4-a716-446655440000", roundID: "660e8400-e29b-41d4-a716-446655440000" });
+    const sig = createSignature(body, INTEGRATION_API_KEY);
+    expect(client.verifyBetRequest(body, sig)).toBe(true);
   });
 
   it("returns true for valid string body signature", () => {
     const bodyStr = '{"amount":"10.00","roundID":"r1","sessionID":"s1","txID":"tx1","type":"regular"}';
-    const sig = createSignature(bodyStr, API_KEY);
-    expect(verifyRequest(bodyStr, sig, API_KEY)).toBe(true);
+    const sig = createSignature(bodyStr, INTEGRATION_API_KEY);
+    expect(client.verifyBetRequest(bodyStr, sig)).toBe(true);
   });
 
   it("returns false for missing signature header", () => {
-    expect(verifyRequest('{"test":true}', undefined, API_KEY)).toBe(false);
+    expect(client.verifyBetRequest('{"test":true}', undefined)).toBe(false);
   });
 
   it("returns false for invalid signature", () => {
     expect(
-      verifyRequest(
+      client.verifyBetRequest(
         '{"test":true}',
-        "0000000000000000000000000000000000000000000000000000000000000000",
-        API_KEY
+        "0000000000000000000000000000000000000000000000000000000000000000"
       )
     ).toBe(false);
   });
 
   it("returns false for wrong key", () => {
     const body = JSON.stringify({ test: true });
-    const sig = createSignature(body, API_KEY);
-    expect(verifyRequest(body, sig, "wrong-key")).toBe(false);
+    const sig = createSignature(body, "wrong-key");
+    expect(client.verifyBetRequest(body, sig)).toBe(false);
   });
 });
 
-describe("verifyGetBalanceRequest", () => {
+describe("verifyBalanceRequest", () => {
   it("returns true for valid query param signature", () => {
     const params = { sessionID: "session-123" };
-    const sig = createQueryParamsSignature(params, API_KEY);
-    expect(verifyGetBalanceRequest(params, sig, API_KEY)).toBe(true);
+    const sig = createQueryParamsSignature(params, INTEGRATION_API_KEY);
+    expect(client.verifyBalanceRequest(params, sig)).toBe(true);
   });
 
   it("returns false for missing signature", () => {
-    expect(verifyGetBalanceRequest({ sessionID: "s1" }, undefined, API_KEY)).toBe(false);
+    expect(client.verifyBalanceRequest({ sessionID: "s1" }, undefined)).toBe(false);
   });
 
   it("returns false for tampered params", () => {
     const params = { sessionID: "session-123" };
-    const sig = createQueryParamsSignature(params, API_KEY);
-    expect(verifyGetBalanceRequest({ sessionID: "session-456" }, sig, API_KEY)).toBe(false);
+    const sig = createQueryParamsSignature(params, INTEGRATION_API_KEY);
+    expect(client.verifyBalanceRequest({ sessionID: "session-456" }, sig)).toBe(false);
   });
 });
 
@@ -121,51 +121,33 @@ describe("response builders", () => {
   });
 });
 
-describe("parseAndVerifyRequest", () => {
+describe("parseAndVerifyBetRequest", () => {
   it("returns ok with typed body on valid signature", () => {
-    const body: BetRequest = {
+    const body = {
       type: "regular",
       sessionID: "s1",
       amount: "10.00",
-      txID: "tx1",
-      roundID: "r1",
+      txID: "550e8400-e29b-41d4-a716-446655440000",
+      roundID: "660e8400-e29b-41d4-a716-446655440000",
     };
     const rawBody = JSON.stringify(body);
-    const sig = createSignature(rawBody, API_KEY);
+    const sig = createSignature(rawBody, INTEGRATION_API_KEY);
 
-    const result = parseAndVerifyRequest<BetRequest>(rawBody, sig, API_KEY);
+    const result = client.parseAndVerifyBetRequest(rawBody, sig);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.body.type).toBe("regular");
       expect(result.body.sessionID).toBe("s1");
       expect(result.body.amount).toBe("10.00");
-      expect(result.body.txID).toBe("tx1");
-      expect(result.body.roundID).toBe("r1");
-    }
-  });
-
-  it("returns ok with RefundRequest body", () => {
-    const body: RefundRequest = {
-      sessionID: "s1",
-      txID: "tx-refund-1",
-      origTxID: "tx1",
-      amount: "10.00",
-    };
-    const rawBody = JSON.stringify(body);
-    const sig = createSignature(rawBody, API_KEY);
-
-    const result = parseAndVerifyRequest<RefundRequest>(rawBody, sig, API_KEY);
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.body.origTxID).toBe("tx1");
+      expect(result.body.txID).toBe("550e8400-e29b-41d4-a716-446655440000");
+      expect(result.body.roundID).toBe("660e8400-e29b-41d4-a716-446655440000");
     }
   });
 
   it("returns error on invalid signature", () => {
     const rawBody = JSON.stringify({ sessionID: "s1" });
-    const result = parseAndVerifyRequest<BetRequest>(rawBody, "bad-sig", API_KEY);
+    const result = client.parseAndVerifyBetRequest(rawBody, "bad-sig");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -175,7 +157,7 @@ describe("parseAndVerifyRequest", () => {
 
   it("returns error on missing signature", () => {
     const rawBody = JSON.stringify({ sessionID: "s1" });
-    const result = parseAndVerifyRequest<BetRequest>(rawBody, undefined, API_KEY);
+    const result = client.parseAndVerifyBetRequest(rawBody, undefined);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -185,7 +167,7 @@ describe("parseAndVerifyRequest", () => {
 
   it("returns error on invalid JSON body", () => {
     const rawBody = "not-json";
-    const result = parseAndVerifyRequest<BetRequest>(rawBody, "some-sig", API_KEY);
+    const result = client.parseAndVerifyBetRequest(rawBody, "some-sig");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -193,32 +175,12 @@ describe("parseAndVerifyRequest", () => {
     }
   });
 
-  it("validates body against zod schema when provided", () => {
-    const body: BetRequest = {
-      type: "regular",
-      sessionID: "s1",
-      amount: "10.00",
-      txID: "550e8400-e29b-41d4-a716-446655440000",
-      roundID: "660e8400-e29b-41d4-a716-446655440000",
-    };
-    const rawBody = JSON.stringify(body);
-    const sig = createSignature(rawBody, API_KEY);
-
-    const result = parseAndVerifyRequest<BetRequest>(rawBody, sig, API_KEY, IntegrationSchemas.PostBetBody);
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.body.type).toBe("regular");
-      expect(result.body.amount).toBe("10.00");
-    }
-  });
-
-  it("returns error when body fails zod schema validation", () => {
+  it("returns error when body fails schema validation", () => {
     const invalidBody = { type: "invalid_type", sessionID: "s1" };
     const rawBody = JSON.stringify(invalidBody);
-    const sig = createSignature(rawBody, API_KEY);
+    const sig = createSignature(rawBody, INTEGRATION_API_KEY);
 
-    const result = parseAndVerifyRequest<BetRequest>(rawBody, sig, API_KEY, IntegrationSchemas.PostBetBody);
+    const result = client.parseAndVerifyBetRequest(rawBody, sig);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -227,12 +189,32 @@ describe("parseAndVerifyRequest", () => {
   });
 });
 
+describe("parseAndVerifyRefundRequest", () => {
+  it("returns ok with typed refund body", () => {
+    const body = {
+      sessionID: "s1",
+      txID: "550e8400-e29b-41d4-a716-446655440001",
+      origTxID: "550e8400-e29b-41d4-a716-446655440000",
+      amount: "10.00",
+    };
+    const rawBody = JSON.stringify(body);
+    const sig = createSignature(rawBody, INTEGRATION_API_KEY);
+
+    const result = client.parseAndVerifyRefundRequest(rawBody, sig);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.origTxID).toBe("550e8400-e29b-41d4-a716-446655440000");
+    }
+  });
+});
+
 describe("parseAndVerifyBalanceRequest", () => {
   it("returns ok with typed query on valid signature", () => {
     const params = { sessionID: "session-abc" };
-    const sig = createQueryParamsSignature(params, API_KEY);
+    const sig = createQueryParamsSignature(params, INTEGRATION_API_KEY);
 
-    const result = parseAndVerifyBalanceRequest(params, sig, API_KEY);
+    const result = client.parseAndVerifyBalanceRequest(params, sig);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -241,7 +223,7 @@ describe("parseAndVerifyBalanceRequest", () => {
   });
 
   it("returns error on invalid signature", () => {
-    const result = parseAndVerifyBalanceRequest({ sessionID: "s1" }, "bad-sig", API_KEY);
+    const result = client.parseAndVerifyBalanceRequest({ sessionID: "s1" }, "bad-sig");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -250,7 +232,7 @@ describe("parseAndVerifyBalanceRequest", () => {
   });
 
   it("returns error on missing signature", () => {
-    const result = parseAndVerifyBalanceRequest({ sessionID: "s1" }, undefined, API_KEY);
+    const result = client.parseAndVerifyBalanceRequest({ sessionID: "s1" }, undefined);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -260,9 +242,9 @@ describe("parseAndVerifyBalanceRequest", () => {
 
   it("returns error when sessionID is missing", () => {
     const params = { other: "value" };
-    const sig = createQueryParamsSignature(params, API_KEY);
+    const sig = createQueryParamsSignature(params, INTEGRATION_API_KEY);
 
-    const result = parseAndVerifyBalanceRequest(params, sig, API_KEY);
+    const result = client.parseAndVerifyBalanceRequest(params, sig);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

@@ -10,10 +10,6 @@ export type {
   CancelFreeRoundsParams,
 } from "./client/types.js";
 
-// Crypto
-export { createSignature, createQueryParamsSignature } from "./crypto/sign.js";
-export { verifySignature, verifyQueryParamsSignature } from "./crypto/verify.js";
-
 // Handler types
 export type {
   TransactionType,
@@ -34,7 +30,7 @@ export type {
   ParsedBalanceError,
 } from "./handlers/types.js";
 
-// Handler helpers
+// Response builders
 export {
   createBalanceResponse,
   createBetResponse,
@@ -42,13 +38,6 @@ export {
   createRefundResponse,
   createErrorResponse,
 } from "./handlers/responses.js";
-
-export {
-  verifyRequest,
-  verifyGetBalanceRequest,
-  parseAndVerifyRequest,
-  parseAndVerifyBalanceRequest,
-} from "./handlers/middleware.js";
 
 // Shared types
 export type { ErrorCode, ErrorAction, PlatformType, User, ErrorResponse } from "./types/common.js";

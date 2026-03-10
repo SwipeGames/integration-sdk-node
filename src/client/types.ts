@@ -7,8 +7,10 @@ export interface SwipeGamesClientConfig {
   cid: string;
   /** Your external client ID */
   extCid: string;
-  /** Shared API key for signing outbound requests and verifying inbound reverse calls */
+  /** API key used to sign outbound requests to the Swipe Games Core API (matches API_KEY on the platform side) */
   apiKey: string;
+  /** API key used to verify inbound reverse calls from the Swipe Games platform (matches INTEGRATION_API_KEY on the platform side) */
+  integrationApiKey: string;
   /** Environment */
   env?: "staging" | "production";
   /** Custom base URL (overrides env) */

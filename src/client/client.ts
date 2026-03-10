@@ -1,8 +1,18 @@
-import { CoreSchemas } from "@swipegames/public-api";
+import type { ZodSchema } from "zod";
+import { CoreSchemas, IntegrationSchemas } from "@swipegames/public-api";
 import { createSignature, createQueryParamsSignature } from "../crypto/sign.js";
 import { verifySignature, verifyQueryParamsSignature } from "../crypto/verify.js";
+import { createErrorResponse } from "../handlers/responses.js";
 import { SwipeGamesApiError, SwipeGamesValidationError } from "./errors.js";
 import type { ErrorResponse } from "../types/common.js";
+import type {
+  BetRequest,
+  WinRequest,
+  RefundRequest,
+  ParsedRequestResult,
+  ParsedBalanceResult,
+  GetBalanceQuery,
+} from "../handlers/types.js";
 import type {
   SwipeGamesClientConfig,
   CreateNewGameParams,
@@ -28,6 +38,7 @@ export class SwipeGamesClient {
   private readonly cid: string;
   private readonly extCid: string;
   private readonly apiKey: string;
+  private readonly integrationApiKey: string;
   private readonly baseUrl: string;
   private readonly debug: boolean;
 
@@ -35,6 +46,7 @@ export class SwipeGamesClient {
     this.cid = config.cid;
     this.extCid = config.extCid;
     this.apiKey = config.apiKey;
+    this.integrationApiKey = config.integrationApiKey;
     this.debug = config.debug ?? false;
 
     if (config.baseUrl) {
@@ -54,6 +66,8 @@ export class SwipeGamesClient {
   private logError(...args: unknown[]): void {
     if (this.debug) console.error("[SwipeGamesSDK]", ...args);
   }
+
+  // ── Outbound: SDK → Platform (signed with apiKey) ──
 
   /** Create a new game session and get the launcher URL. */
   async createNewGame(
@@ -118,28 +132,86 @@ export class SwipeGamesClient {
     await this.request("DELETE", "/free-rounds", body);
   }
 
-  /**
-   * Verify a reverse call signature on a POST request body.
-   */
-  verifyReverseCallSignature(
-    body: string,
-    signature: string
-  ): boolean {
-    return verifySignature(body, signature, this.apiKey);
+  // ── Inbound: Platform → SDK (verified with integrationApiKey) ──
+
+  // -- Bet --
+
+  /** Verify the signature of an incoming /bet request. */
+  verifyBetRequest(body: string, signatureHeader: string | undefined): boolean {
+    return this.verifyInboundSignature(body, signatureHeader);
   }
 
-  /**
-   * Verify a reverse call signature on a GET /balance request.
-   */
-  verifyGetBalanceSignature(
-    queryParams: Record<string, string>,
-    signature: string
-  ): boolean {
-    return verifyQueryParamsSignature(
-      queryParams,
-      signature,
-      this.apiKey
-    );
+  /** Parse, verify, and validate an incoming /bet request. */
+  parseAndVerifyBetRequest(rawBody: string, signatureHeader: string | undefined): ParsedRequestResult<BetRequest> {
+    return this.parseAndVerifyInboundRequest(rawBody, signatureHeader, IntegrationSchemas.PostBetBody);
+  }
+
+  // -- Win --
+
+  /** Verify the signature of an incoming /win request. */
+  verifyWinRequest(body: string, signatureHeader: string | undefined): boolean {
+    return this.verifyInboundSignature(body, signatureHeader);
+  }
+
+  /** Parse, verify, and validate an incoming /win request. */
+  parseAndVerifyWinRequest(rawBody: string, signatureHeader: string | undefined): ParsedRequestResult<WinRequest> {
+    return this.parseAndVerifyInboundRequest(rawBody, signatureHeader, IntegrationSchemas.PostWinBody);
+  }
+
+  // -- Refund --
+
+  /** Verify the signature of an incoming /refund request. */
+  verifyRefundRequest(body: string, signatureHeader: string | undefined): boolean {
+    return this.verifyInboundSignature(body, signatureHeader);
+  }
+
+  /** Parse, verify, and validate an incoming /refund request. */
+  parseAndVerifyRefundRequest(rawBody: string, signatureHeader: string | undefined): ParsedRequestResult<RefundRequest> {
+    return this.parseAndVerifyInboundRequest(rawBody, signatureHeader, IntegrationSchemas.PostRefundBody);
+  }
+
+  // -- Balance --
+
+  /** Verify the signature of an incoming GET /balance request. */
+  verifyBalanceRequest(queryParams: Record<string, string>, signatureHeader: string | undefined): boolean {
+    if (!signatureHeader) return false;
+    return verifyQueryParamsSignature(queryParams, signatureHeader, this.integrationApiKey);
+  }
+
+  /** Parse, verify, and validate an incoming GET /balance request. */
+  parseAndVerifyBalanceRequest(queryParams: Record<string, string>, signatureHeader: string | undefined): ParsedBalanceResult {
+    if (!this.verifyBalanceRequest(queryParams, signatureHeader)) {
+      return { ok: false, error: createErrorResponse({ message: "Invalid signature" }) };
+    }
+
+    if (!queryParams.sessionID) {
+      return { ok: false, error: createErrorResponse({ message: "Missing sessionID" }) };
+    }
+    const query: GetBalanceQuery = { sessionID: queryParams.sessionID };
+    return { ok: true, query };
+  }
+
+  // ── Inbound internals ──
+
+  private verifyInboundSignature(body: string, signatureHeader: string | undefined): boolean {
+    if (!signatureHeader) return false;
+    return verifySignature(body, signatureHeader, this.integrationApiKey);
+  }
+
+  private parseAndVerifyInboundRequest<T>(rawBody: string, signatureHeader: string | undefined, schema: ZodSchema): ParsedRequestResult<T> {
+    try {
+      if (!this.verifyInboundSignature(rawBody, signatureHeader)) {
+        return { ok: false, error: createErrorResponse({ message: "Invalid signature" }) };
+      }
+      const parsed = JSON.parse(rawBody);
+      const result = schema.safeParse(parsed);
+      if (!result.success) {
+        return { ok: false, error: createErrorResponse({ message: "Invalid request body" }) };
+      }
+      return { ok: true, body: result.data as T };
+    } catch {
+      return { ok: false, error: createErrorResponse({ message: "Invalid request body" }) };
+    }
   }
 
   // ── Internal helpers ──
