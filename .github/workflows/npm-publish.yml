@@ -1,18 +1,15 @@
-name: Publish npm package
+name: Publish to npm
 
 on:
-  push:
-    branches:
-      - "main"
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
+  release:
+    types: [published]
 
 jobs:
-  build-and-publish:
-    runs-on: self-hosted
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Generate a token
         id: generate-token
@@ -23,42 +20,23 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: https://npm.pkg.github.com
-          scope: "@swipegames"
-          cache: npm
+          node-version: 22
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ steps.generate-token.outputs.token }}
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
 
       - name: Run tests
         run: npm test
 
-      - name: Check version is not already published
-        env:
-          NODE_AUTH_TOKEN: ${{ steps.generate-token.outputs.token }}
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: |
-          PKG_NAME=$(node -p "require('./package.json').name")
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
-            echo "::error::Version ${PKG_VERSION} is already published. Bump the version in package.json before merging."
-            exit 1
-          fi
-          echo "Version ${PKG_VERSION} is available."
-
       - name: Build
         run: npm run build
 
-      - name: Publish to GitHub Packages
-        env:
-          NODE_AUTH_TOKEN: ${{ steps.generate-token.outputs.token }}
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: npm publish
+      - name: Publish to npm
+        run: npm publish --provenance --access public

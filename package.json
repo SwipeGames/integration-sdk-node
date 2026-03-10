@@ -1,9 +1,10 @@
 {
   "name": "@swipegames/integration-sdk",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Node.js SDK for Swipe Games integrators",
   "main": "./dist/index.js",
@@ -33,7 +34,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@swipegames/public-api": "^1.2.4",
+    "@swipegames/public-api": "^1.2.5",
     "canonicalize": "^2.0.0",
     "zod": "^3.23.0"
   },
@@ -43,5 +44,6 @@
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a"
 }
