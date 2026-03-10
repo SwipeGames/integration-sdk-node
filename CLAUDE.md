@@ -5,9 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 Node.js SDK for Swipe Games integrators (`@swipegames/integration-sdk`). Published to GitHub Packages. Provides:
-- **Client** for the Core API (create games, list games, free rounds)
-- **Crypto** utilities for HMAC-SHA256 + JCS canonicalization request signing/verification
-- **Handler helpers** for the Integration Adapter API (reverse calls from Swipe Games to integrator servers: balance, bet, win, refund)
+- **Client** for the Core API (create games, list games, free rounds) — signs outbound requests with `apiKey`
+- **Client** verification/parsing of reverse calls (balance, bet, win, refund) — verifies inbound requests with `integrationApiKey`
+- **Response builders** for integrators implementing reverse call endpoints
+- **Crypto** internals (HMAC-SHA256 + JCS canonicalization) — not publicly exported
 
 ## Commands
 
@@ -23,12 +24,21 @@ npm run lint          # Type check only (tsc --noEmit)
 
 ESM-only package (`"type": "module"`). TypeScript with strict mode. All internal imports use `.js` extensions (Node16 module resolution).
 
+### Two API keys
+
+The SDK uses two separate keys per integration:
+- **`apiKey`** — signs outbound requests from SDK to the Swipe Games Core API (matches `API_KEY_{CID}` on the platform)
+- **`integrationApiKey`** — verifies inbound reverse calls from the platform to the integrator (matches `INTEGRATION_API_KEY_{CID}` on the platform)
+
 ### Source layout (`src/`)
 
 - **`index.ts`** — Public barrel export. All public API surfaces are re-exported here.
-- **`client/`** — `SwipeGamesClient` class: wraps Core API endpoints (create-new-game, games, free-rounds). Auto-signs requests via `X-REQUEST-SIGN` header. Uses native `fetch`. Validates request params with Zod schemas from `@swipegames/public-api` before sending.
-- **`crypto/`** — Low-level signing (`sign.ts`) and verification (`verify.ts`) using `node:crypto` HMAC-SHA256. `jcs.ts` handles JSON Canonicalization Scheme (RFC 8785) via the `canonicalize` package.
-- **`handlers/`** — Helpers for integrators implementing reverse call endpoints. `middleware.ts` provides `parseAndVerifyRequest`/`parseAndVerifyBalanceRequest` (combined signature verification + body parsing). `responses.ts` provides typed response builders. `types.ts` defines request/response interfaces.
+- **`client/`** — `SwipeGamesClient` class: the single entry point for all SDK functionality.
+  - Outbound: `createNewGame`, `getGames`, `createFreeRounds`, `cancelFreeRounds` — auto-signs with `apiKey`
+  - Inbound verify-only: `verifyBetRequest`, `verifyWinRequest`, `verifyRefundRequest`, `verifyBalanceRequest`
+  - Inbound parse+verify: `parseAndVerifyBetRequest`, `parseAndVerifyWinRequest`, `parseAndVerifyRefundRequest`, `parseAndVerifyBalanceRequest` — verifies signature, parses body, validates against Zod schema
+- **`crypto/`** — Internal signing (`sign.ts`) and verification (`verify.ts`) using `node:crypto` HMAC-SHA256. `jcs.ts` handles JSON Canonicalization Scheme (RFC 8785). Not exported publicly.
+- **`handlers/`** — `responses.ts` provides typed response builders (`createBalanceResponse`, `createBetResponse`, etc.). `types.ts` defines request/response interfaces and discriminated union result types.
 - **`types/`** — Shared type definitions (`common.ts` for error codes/actions, `games.ts` for game info types).
 
 ### Key dependency
