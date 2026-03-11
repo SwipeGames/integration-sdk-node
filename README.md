@@ -32,6 +32,7 @@ npm install @swipegames/integration-sdk
 ## Client Setup
 
 The SDK uses two separate API keys:
+
 - **`apiKey`** — used to sign requests **you send** to the Swipe Games Core API
 - **`integrationApiKey`** — used to verify reverse calls **you receive** from the Swipe Games platform
 
@@ -39,25 +40,25 @@ The SDK uses two separate API keys:
 import { SwipeGamesClient } from "@swipegames/integration-sdk";
 
 const client = new SwipeGamesClient({
-  cid: "your-cid-uuid",               // Swipe Games-assigned Client ID (CID)
-  extCid: "your-ext-cid",             // Your External Client ID (ExtCID)
-  apiKey: "your-api-key",             // Signs outbound requests to Core API
-  integrationApiKey: "your-int-key",  // Verifies inbound reverse calls from platform
-  env: "staging",                      // "staging" | "production"
+  cid: "your-cid-uuid", // Swipe Games-assigned Client ID (CID)
+  extCid: "your-ext-cid", // Your External Client ID (ExtCID)
+  apiKey: "your-api-key", // Signs outbound requests to Core API
+  integrationApiKey: "your-int-key", // Verifies inbound reverse calls from platform
+  env: "staging", // "staging" | "production"
 });
 ```
 
 ### Configuration options
 
-| Option              | Type                        | Required | Description                                                |
-| ------------------- | --------------------------- | -------- | ---------------------------------------------------------- |
-| `cid`               | `string`                    | Yes      | Swipe Games-assigned Client ID (CID)                       |
-| `extCid`            | `string`                    | Yes      | Your External Client ID (ExtCID)                           |
-| `apiKey`            | `string`                    | Yes      | API key for signing outbound requests to the Core API      |
-| `integrationApiKey` | `string`                    | Yes      | API key for verifying inbound reverse calls from platform  |
-| `env`               | `"staging" \| "production"` | No       | Environment (defaults to `"staging"`)                      |
-| `baseUrl`           | `string`                    | No       | Custom base URL (overrides `env`)                          |
-| `debug`             | `boolean`                   | No       | Enable request/response logging (default `false`)          |
+| Option              | Type                        | Required | Description                                               |
+| ------------------- | --------------------------- | -------- | --------------------------------------------------------- |
+| `cid`               | `string`                    | Yes      | Swipe Games-assigned Client ID (CID)                      |
+| `extCid`            | `string`                    | Yes      | Your External Client ID (ExtCID)                          |
+| `apiKey`            | `string`                    | Yes      | API key for signing outbound requests to the Core API     |
+| `integrationApiKey` | `string`                    | Yes      | API key for verifying inbound reverse calls from platform |
+| `env`               | `"staging" \| "production"` | No       | Environment (defaults to `"staging"`)                     |
+| `baseUrl`           | `string`                    | No       | Custom base URL (overrides `env`)                         |
+| `debug`             | `boolean`                   | No       | Enable request/response logging (default `false`)         |
 
 ### Using a custom base URL
 
@@ -158,7 +159,9 @@ All reverse calls are signed by the platform with your `integrationApiKey`. The 
 
 ### Parse & verify (recommended)
 
-These methods verify the signature, parse the body, validate against the Zod schema, and return a typed result:
+The `parseAndVerify*` methods verify the signature, parse the body, validate against the Zod schema, and return a typed result.
+
+To build your responses, import the response helpers:
 
 ```typescript
 import {
@@ -177,7 +180,10 @@ function handleGetBalance(
   queryParams: Record<string, string>,
   signatureHeader: string | undefined,
 ) {
-  const result = client.parseAndVerifyBalanceRequest(queryParams, signatureHeader);
+  const result = client.parseAndVerifyBalanceRequest(
+    queryParams,
+    signatureHeader,
+  );
   if (!result.ok) {
     return { status: 401, body: result.error };
   }
@@ -199,7 +205,10 @@ function handleBet(rawBody: string, signatureHeader: string | undefined) {
   }
 
   // Your logic: deduct the bet amount and record the transaction.
-  const newBalance = deductFromWallet(result.body.sessionID, result.body.amount);
+  const newBalance = deductFromWallet(
+    result.body.sessionID,
+    result.body.amount,
+  );
   const partnerTxID = saveTransaction(result.body.txID, result.body.roundID);
 
   return { status: 200, body: createBetResponse(newBalance, partnerTxID) };
@@ -238,7 +247,10 @@ function handleRefund(rawBody: string, signatureHeader: string | undefined) {
     result.body.origTxID,
     result.body.amount,
   );
-  const partnerTxID = saveRefundTransaction(result.body.txID, result.body.origTxID);
+  const partnerTxID = saveRefundTransaction(
+    result.body.txID,
+    result.body.origTxID,
+  );
 
   return { status: 200, body: createRefundResponse(newBalance, partnerTxID) };
 }
