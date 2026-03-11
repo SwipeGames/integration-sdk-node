@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Node.js SDK for Swipe Games integrators (`@swipegames/integration-sdk`). Published to GitHub Packages. Provides:
+Node.js SDK for Swipe Games integrators (`@swipegames/integration-sdk`). Published to npm (`registry.npmjs.org`). Provides:
 - **Client** for the Core API (create games, list games, free rounds) — signs outbound requests with `apiKey`
 - **Client** verification/parsing of reverse calls (balance, bet, win, refund) — verifies inbound requests with `integrationApiKey`
 - **Response builders** for integrators implementing reverse call endpoints
@@ -47,8 +47,8 @@ The SDK uses two separate keys per integration:
 
 ## CI
 
-PRs to `main` run tests, type checking, and verify the package version has been bumped (version must not already be published to GitHub Packages).
+PRs to `main` run tests and type checking.
 
 ## Publishing
 
-`npm publish` triggers `prepublishOnly` → builds, then publishes to GitHub Packages (`npm.pkg.github.com`). Bump version in `package.json` before merging to main.
+A GitHub release triggers the publish workflow: runs tests, builds, and publishes to npm (`registry.npmjs.org`) with OIDC provenance. Bump version in `package.json` before merging to main.
