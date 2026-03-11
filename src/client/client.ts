@@ -74,9 +74,9 @@ export class SwipeGamesClient {
     params: CreateNewGameParams
   ): Promise<CreateNewGameResponse> {
     const body = stripUndefined({
+      ...params,
       cID: this.cid,
       extCID: this.extCid,
-      ...params,
     });
 
     const parsed = CoreSchemas.PostCreateNewGameBody.safeParse(body);
@@ -84,7 +84,7 @@ export class SwipeGamesClient {
       throw new SwipeGamesValidationError(parsed.error);
     }
 
-    return this.post<CreateNewGameResponse>("/create-new-game", body);
+    return this.post<CreateNewGameResponse>("/create-new-game", parsed.data);
   }
 
   /** Get information about all supported games. */
@@ -101,9 +101,9 @@ export class SwipeGamesClient {
     params: CreateFreeRoundsParams
   ): Promise<CreateFreeRoundsResponse> {
     const body = stripUndefined({
+      ...params,
       cID: this.cid,
       extCID: this.extCid,
-      ...params,
     });
 
     const parsed = CoreSchemas.PostFreeRoundsBody.safeParse(body);
@@ -111,15 +111,15 @@ export class SwipeGamesClient {
       throw new SwipeGamesValidationError(parsed.error);
     }
 
-    return this.post<CreateFreeRoundsResponse>("/free-rounds", body);
+    return this.post<CreateFreeRoundsResponse>("/free-rounds", parsed.data);
   }
 
   /** Cancel/delete an existing free rounds campaign. */
   async cancelFreeRounds(params: CancelFreeRoundsParams): Promise<void> {
     const body = stripUndefined({
+      ...params,
       cID: this.cid,
       extCID: this.extCid,
-      ...params,
     });
 
     const parsed = CoreSchemas.DeleteFreeRoundsBody
@@ -129,7 +129,8 @@ export class SwipeGamesClient {
       throw new SwipeGamesValidationError(parsed.error);
     }
 
-    await this.request("DELETE", "/free-rounds", body);
+    const res = await this.request("DELETE", "/free-rounds", parsed.data);
+    await res.text();
   }
 
   // ── Inbound: Platform → SDK (verified with integrationApiKey) ──

@@ -36,8 +36,6 @@ export function verifyQueryParamsSignature(
 }
 
 function safeCompare(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "hex");
-  const bufB = Buffer.from(b, "hex");
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
 }

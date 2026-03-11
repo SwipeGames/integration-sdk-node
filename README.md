@@ -7,6 +7,7 @@ For full API details, see the [Swipe Games Public API documentation](https://swi
 ## Requirements
 
 - Node.js >= 18
+- **ESM only** — this package uses `"type": "module"` and cannot be `require()`'d from CommonJS. Use `import` syntax or a dynamic `await import()`.
 
 ## Installation
 

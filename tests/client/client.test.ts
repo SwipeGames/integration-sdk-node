@@ -26,18 +26,31 @@ describe("SwipeGamesClient", () => {
   });
 
   describe("constructor", () => {
-    it("uses staging URL by default", () => {
+    it("uses staging URL by default", async () => {
       const c = new SwipeGamesClient({ ...CLIENT_CONFIG, env: undefined });
-      // Will verify via fetch call URL
-      expect(c).toBeDefined();
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      await c.getGames();
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain("staging.platform.0.swipegames.io");
     });
 
-    it("uses custom baseUrl when provided", () => {
+    it("uses production URL when env is production", async () => {
+      const c = new SwipeGamesClient({ ...CLIENT_CONFIG, env: "production" });
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      await c.getGames();
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain("prod.platform.1.swipegames.io");
+    });
+
+    it("uses custom baseUrl when provided", async () => {
       const c = new SwipeGamesClient({
         ...CLIENT_CONFIG,
         baseUrl: "https://custom.api/v1",
       });
-      expect(c).toBeDefined();
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      await c.getGames();
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain("https://custom.api/v1");
     });
 
     it("throws on unknown env", () => {
@@ -90,23 +103,43 @@ describe("SwipeGamesClient", () => {
       expect(opts.headers["X-REQUEST-SIGN"]).toBe(expectedSig);
     });
 
-    it("throws SwipeGamesApiError on non-200", async () => {
+    it("throws SwipeGamesApiError on non-200 with status, code, and details", async () => {
       fetchMock.mockResolvedValue({
         ok: false,
         status: 401,
         json: () =>
-          Promise.resolve({ message: "Invalid signature" }),
+          Promise.resolve({ message: "Invalid signature", code: "session_expired", details: "Token expired at 12:00" }),
       });
 
-      await expect(
-        client.createNewGame({
+      try {
+        await client.createNewGame({
           gameID: "sg_catch_97",
           demo: false,
           platform: "desktop",
           currency: "USD",
           locale: "en_us",
+        });
+        expect.unreachable("should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(SwipeGamesApiError);
+        const apiErr = err as SwipeGamesApiError;
+        expect(apiErr.status).toBe(401);
+        expect(apiErr.message).toBe("Invalid signature");
+        expect(apiErr.code).toBe("session_expired");
+        expect(apiErr.details).toBe("Token expired at 12:00");
+      }
+    });
+
+    it("throws SwipeGamesValidationError on invalid params", async () => {
+      await expect(
+        client.createNewGame({
+          gameID: "", // empty string should fail
+          demo: false,
+          platform: "invalid_platform" as any,
+          currency: "USD",
+          locale: "en_us",
         })
-      ).rejects.toThrow(SwipeGamesApiError);
+      ).rejects.toThrow(SwipeGamesValidationError);
     });
 
     it("uses statusText when error response is not valid JSON", async () => {
@@ -183,6 +216,18 @@ describe("SwipeGamesClient", () => {
       expect(sentBody.extID).toBe("ext-fr-1");
       expect(sentBody.quantity).toBe(10);
     });
+
+    it("throws SwipeGamesValidationError on invalid params", async () => {
+      await expect(
+        client.createFreeRounds({
+          extID: "campaign-1",
+          currency: "USD",
+          quantity: -1, // invalid
+          betLine: 5,
+          validFrom: "not-a-date",
+        } as any)
+      ).rejects.toThrow(SwipeGamesValidationError);
+    });
   });
 
   describe("cancelFreeRounds", () => {
@@ -190,6 +235,7 @@ describe("SwipeGamesClient", () => {
       fetchMock.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({}),
+        text: () => Promise.resolve(""),
       });
 
       await client.cancelFreeRounds({ extID: "ext-fr-1" });
