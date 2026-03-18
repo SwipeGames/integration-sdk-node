@@ -1,12 +1,6 @@
 name: Auto-update SDK
 
 on:
-  # TODO: Remove pull_request trigger after testing is complete
-  pull_request:
-    branches: [main]
-    paths:
-      - ".github/workflows/auto-update.yml"
-      - ".github/prompts/auto-update.md"
   workflow_dispatch:
     inputs:
       public_api_version:
@@ -205,7 +199,7 @@ jobs:
           git add -A ':!public-api'
           git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
 
-          git commit -m "chore: update @swipegames/public-api to v${TARGET}"
+          git commit -m "build(update): update @swipegames/public-api to v${TARGET}"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git push origin "${BRANCH}"
 
@@ -243,7 +237,7 @@ jobs:
           🤖 Generated with [Claude Code](https://claude.ai/code)"
 
           PR_URL=$(gh pr create \
-            --title "chore: update @swipegames/public-api to v${TARGET}" \
+            --title "build(update): update @swipegames/public-api to v${TARGET}" \
             --body "$BODY" \
             --label "$LABEL" \
             --base main)
