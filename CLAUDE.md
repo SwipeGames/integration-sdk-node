@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 Node.js SDK for Swipe Games integrators (`@swipegames/integration-sdk`). Published to npm (`registry.npmjs.org`). Provides:
+
 - **Client** for the Core API (create games, list games, free rounds) — signs outbound requests with `apiKey`
 - **Client** verification/parsing of reverse calls (balance, bet, win, refund) — verifies inbound requests with `integrationApiKey`
 - **Response builders** for integrators implementing reverse call endpoints
@@ -23,10 +24,12 @@ npm run lint          # Type check only (tsc --noEmit)
 ## Architecture
 
 ESM-only package (`"type": "module"`). TypeScript with strict mode. All internal imports use `.js` extensions (Node16 module resolution).
+:
 
 ### Two API keys
 
 The SDK uses two separate keys per integration:
+
 - **`apiKey`** — signs outbound requests from SDK to the Swipe Games Core API (matches `API_KEY_{CID}` on the platform)
 - **`integrationApiKey`** — verifies inbound reverse calls from the platform to the integrator (matches `INTEGRATION_API_KEY_{CID}` on the platform)
 

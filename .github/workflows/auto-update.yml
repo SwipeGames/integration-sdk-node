@@ -150,8 +150,12 @@ jobs:
         if: steps.versions.outputs.up_to_date == 'false' && steps.check-branch.outputs.exists == 'false'
         id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.BEDROCK_API_KEY }}
+          AWS_REGION: ${{ secrets.BEDROCK_REGION }}
+          CLAUDE_CODE_ATTRIBUTION_HEADER: "0"
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          use_bedrock: "true"
           prompt: |
             Read the prompt file at .github/prompts/auto-update.md and follow its instructions.
 
@@ -165,8 +169,7 @@ jobs:
 
             IMPORTANT: After making all changes, run `npm test` and `npm run lint` to verify everything works. Fix any failures before finishing.
           direct_prompt: true
-          model: claude-sonnet-4-6
-          max_turns: "30"
+          claude_args: "--model us.anthropic.claude-sonnet-4-6-v1 --max-turns 30"
           timeout_minutes: "30"
           allowed_tools: "Edit,Write,Read,Glob,Grep,Bash(npm test),Bash(npm run lint),Bash(npm run build),Bash(npx vitest run *)"
 
