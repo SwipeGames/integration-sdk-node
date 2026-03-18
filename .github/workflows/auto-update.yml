@@ -5,8 +5,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - '.github/workflows/auto-update.yml'
-      - '.github/prompts/auto-update.md'
+      - ".github/workflows/auto-update.yml"
+      - ".github/prompts/auto-update.md"
   workflow_dispatch:
     inputs:
       public_api_version:
@@ -178,6 +178,10 @@ jobs:
           claude_args: '--model global.anthropic.claude-opus-4-6-v1 --max-turns 30 --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep"'
           timeout_minutes: "30"
 
+      - name: Sleep
+        if: always()
+        run: |
+          sleep infinity
       - name: Run final tests
         if: steps.versions.outputs.up_to_date == 'false' && steps.check-branch.outputs.exists == 'false'
         id: final-tests
