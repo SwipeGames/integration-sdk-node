@@ -169,7 +169,7 @@ jobs:
 
             IMPORTANT: After making all changes, run `npm test` and `npm run lint` to verify everything works. Fix any failures before finishing.
           direct_prompt: true
-          claude_args: "--model us.anthropic.claude-opus-4-6-v1 --max-turns 30"
+          claude_args: "--model global.anthropic.claude-opus-4-6-v1 --max-turns 30"
           timeout_minutes: "30"
           allowed_tools: "Edit,Write,Read,Glob,Grep,Bash(npm test),Bash(npm run lint),Bash(npm run build),Bash(npx vitest run *)"
 
