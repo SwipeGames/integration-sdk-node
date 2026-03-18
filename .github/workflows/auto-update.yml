@@ -106,8 +106,11 @@ jobs:
 
           cd public-api
 
-          # Generate diff between versions
-          git diff "v${CURRENT}..v${TARGET}" -- packages/node/ api/ docs/ > /tmp/public-api-diff.txt 2>/dev/null || true
+          # Generate diff between versions (exclude Go code, lock files, and generated schema docs)
+          git diff "v${CURRENT}..v${TARGET}" -- packages/node/ api/ docs/ \
+            ':!**/*.gen.go' ':!**/go.mod' ':!**/go.sum' \
+            ':!**/package-lock.json' ':!**/schemas/*.schema.mdx' \
+            > /tmp/public-api-diff.txt 2>/dev/null || true
 
           # Extract changelog excerpt if available
           if [ -f docs/changes-log.md ]; then

@@ -21,7 +21,7 @@ These env vars provide context (all optional — detect from local state if miss
    - If `PUBLIC_API_DIFF_FILE` is set and exists, read that file
    - Otherwise, in the public-api repo (`PUBLIC_API_REPO_PATH` or `../public-api`), run:
      ```
-     git diff v{current}..v{target} -- packages/node/ api/ docs/
+     git diff v{current}..v{target} -- packages/node/ api/ docs/ ':!**/*.gen.go' ':!**/go.mod' ':!**/go.sum' ':!**/package-lock.json' ':!**/schemas/*.schema.mdx'
      ```
    - If the public-api repo is not available, inspect the installed package at `node_modules/@swipegames/public-api/` to understand the current API surface
 
