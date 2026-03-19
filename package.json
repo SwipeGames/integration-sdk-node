@@ -4,7 +4,7 @@
     "registry": "https://registry.npmjs.org",
     "access": "public"
   },
-  "version": "0.0.1",
+  "version": "1.2.21",
   "type": "module",
   "description": "Node.js SDK for Swipe Games integrators",
   "main": "./dist/index.js",
@@ -34,7 +34,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@swipegames/public-api": "^1.2.11",
+    "@swipegames/public-api": "^1.2.21",
     "canonicalize": "^2.0.0",
     "zod": "^3.23.0"
   },
