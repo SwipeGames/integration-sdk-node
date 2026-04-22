@@ -1,9 +1,9 @@
 import type { ZodError } from "zod";
-import type { ErrorResponse } from "../types/common.js";
+import type { CoreErrorCode, ErrorResponse } from "../types/common.js";
 
 export class SwipeGamesApiError extends Error {
   public readonly status: number;
-  public readonly code?: string;
+  public readonly code?: CoreErrorCode;
   public readonly details?: string;
 
   constructor(status: number, body: ErrorResponse) {

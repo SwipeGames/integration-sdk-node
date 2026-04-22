@@ -40,7 +40,7 @@ export {
 } from "./handlers/responses.js";
 
 // Shared types
-export type { ErrorCode, ErrorAction, PlatformType, User, ErrorResponse } from "./types/common.js";
+export type { CoreErrorCode, ErrorCode, ErrorAction, PlatformType, User, ErrorResponse } from "./types/common.js";
 export type {
   GameInfo,
   GameInfoImages,

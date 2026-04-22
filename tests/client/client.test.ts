@@ -106,9 +106,9 @@ describe("SwipeGamesClient", () => {
     it("throws SwipeGamesApiError on non-200 with status, code, and details", async () => {
       fetchMock.mockResolvedValue({
         ok: false,
-        status: 401,
+        status: 404,
         json: () =>
-          Promise.resolve({ message: "Invalid signature", code: "session_expired", details: "Token expired at 12:00" }),
+          Promise.resolve({ message: "Game not found", code: "game_not_found", details: "gameID sg_catch_97 does not exist" }),
       });
 
       try {
@@ -123,10 +123,10 @@ describe("SwipeGamesClient", () => {
       } catch (err) {
         expect(err).toBeInstanceOf(SwipeGamesApiError);
         const apiErr = err as SwipeGamesApiError;
-        expect(apiErr.status).toBe(401);
-        expect(apiErr.message).toBe("Invalid signature");
-        expect(apiErr.code).toBe("session_expired");
-        expect(apiErr.details).toBe("Token expired at 12:00");
+        expect(apiErr.status).toBe(404);
+        expect(apiErr.message).toBe("Game not found");
+        expect(apiErr.code).toBe("game_not_found");
+        expect(apiErr.details).toBe("gameID sg_catch_97 does not exist");
       }
     });
 
