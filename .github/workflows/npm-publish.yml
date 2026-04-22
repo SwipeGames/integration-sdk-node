@@ -40,7 +40,14 @@ jobs:
         run: npm run build
 
       - name: Set package version from tag
-        run: npm version --no-git-tag-version "${{ steps.version.outputs.pkg_version }}"
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          TARGET="${{ steps.version.outputs.pkg_version }}"
+          if [ "$CURRENT" != "$TARGET" ]; then
+            npm version --no-git-tag-version "$TARGET"
+          else
+            echo "package.json already at $TARGET"
+          fi
 
       - name: Publish to npm
         run: npm publish --provenance --access public
