@@ -207,6 +207,26 @@ describe("parseAndVerifyRefundRequest", () => {
       expect(result.body.origTxID).toBe("550e8400-e29b-41d4-a716-446655440000");
     }
   });
+
+  it("returns ok with optional roundID field", () => {
+    const body = {
+      sessionID: "s1",
+      txID: "550e8400-e29b-41d4-a716-446655440001",
+      origTxID: "550e8400-e29b-41d4-a716-446655440000",
+      roundID: "770e8400-e29b-41d4-a716-446655440000",
+      amount: "10.00",
+    };
+    const rawBody = JSON.stringify(body);
+    const sig = createSignature(rawBody, INTEGRATION_API_KEY);
+
+    const result = client.parseAndVerifyRefundRequest(rawBody, sig);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.roundID).toBe("770e8400-e29b-41d4-a716-446655440000");
+      expect(result.body.origTxID).toBe("550e8400-e29b-41d4-a716-446655440000");
+    }
+  });
 });
 
 describe("parseAndVerifyBalanceRequest", () => {

@@ -20,6 +20,7 @@ import type {
   CreateFreeRoundsParams,
   CreateFreeRoundsResponse,
   CancelFreeRoundsParams,
+  GetGamesOptions,
 } from "./types.js";
 import type { GameInfo } from "../types/games.js";
 
@@ -88,11 +89,14 @@ export class SwipeGamesClient {
   }
 
   /** Get information about all supported games. */
-  async getGames(): Promise<GameInfo[]> {
+  async getGames(options?: GetGamesOptions): Promise<GameInfo[]> {
     const queryParams: Record<string, string> = {
       cID: this.cid,
       extCID: this.extCid,
     };
+    if (options?.excludeBetLines) {
+      queryParams.excludeBetLines = "true";
+    }
     return this.get<GameInfo[]>("/games", queryParams);
   }
 
