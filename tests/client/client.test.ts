@@ -177,6 +177,7 @@ describe("SwipeGamesClient", () => {
       expect(url).toContain("/games");
       expect(url).toContain(`cID=${CLIENT_CONFIG.cid}`);
       expect(url).toContain(`extCID=${CLIENT_CONFIG.extCid}`);
+      expect(url).not.toContain("excludeBetLines");
       expect(opts.method).toBe("GET");
       expect(opts.headers["X-REQUEST-SIGN"]).toBeDefined();
 
@@ -186,6 +187,37 @@ describe("SwipeGamesClient", () => {
         CLIENT_CONFIG.apiKey
       );
       expect(opts.headers["X-REQUEST-SIGN"]).toBe(expectedSig);
+    });
+
+    it("includes excludeBetLines query param when set to true", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames({ excludeBetLines: true });
+
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toContain("excludeBetLines=true");
+
+      // Verify signature includes the excludeBetLines param
+      const expectedSig = createQueryParamsSignature(
+        { cID: CLIENT_CONFIG.cid, extCID: CLIENT_CONFIG.extCid, excludeBetLines: "true" },
+        CLIENT_CONFIG.apiKey
+      );
+      expect(opts.headers["X-REQUEST-SIGN"]).toBe(expectedSig);
+    });
+
+    it("does not include excludeBetLines when set to false", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames({ excludeBetLines: false });
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).not.toContain("excludeBetLines");
     });
   });
 
@@ -367,6 +399,18 @@ describe("SwipeGamesClient", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.body.origTxID).toBe("550e8400-e29b-41d4-a716-446655440000");
+      }
+    });
+
+    it("parses refund request with optional roundID", () => {
+      const body = { sessionID: "s1", txID: "550e8400-e29b-41d4-a716-446655440003", origTxID: "550e8400-e29b-41d4-a716-446655440000", roundID: "770e8400-e29b-41d4-a716-446655440000", amount: "10.00" };
+      const rawBody = JSON.stringify(body);
+      const sig = createSignature(rawBody, CLIENT_CONFIG.integrationApiKey);
+
+      const result = client.parseAndVerifyRefundRequest(rawBody, sig);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.body.roundID).toBe("770e8400-e29b-41d4-a716-446655440000");
       }
     });
   });

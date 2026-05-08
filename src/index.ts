@@ -8,6 +8,7 @@ export type {
   CreateFreeRoundsParams,
   CreateFreeRoundsResponse,
   CancelFreeRoundsParams,
+  GetGamesOptions,
 } from "./client/types.js";
 
 // Handler types

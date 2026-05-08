@@ -38,3 +38,8 @@ export type CreateFreeRoundsResponse = CoreTypes.CreateFreeRoundsResponse;
 export type CancelFreeRoundsParams =
   | { id: string; extID?: string }
   | { id?: string; extID: string };
+
+export interface GetGamesOptions {
+  /** When `true`, the `betLines` field is omitted from each game in the response. Defaults to `false`. */
+  excludeBetLines?: boolean;
+}
