@@ -97,6 +97,12 @@ export class SwipeGamesClient {
     if (options?.excludeBetLines) {
       queryParams.excludeBetLines = "true";
     }
+    if (options?.currencyFilters && options.currencyFilters.length > 0) {
+      queryParams.currencyFilters = options.currencyFilters.join(",");
+    }
+    if (options?.additionalCurrencies && options.additionalCurrencies.length > 0) {
+      queryParams.additionalCurrencies = options.additionalCurrencies.join(",");
+    }
     return this.get<GameInfo[]>("/games", queryParams);
   }
 

@@ -42,4 +42,8 @@ export type CancelFreeRoundsParams =
 export interface GetGamesOptions {
   /** When `true`, the `betLines` field is omitted from each game in the response. Defaults to `false`. */
   excludeBetLines?: boolean;
+  /** Optional list of currency filters. When provided, each game's `currencies` and `betLines` contain only matching codes. */
+  currencyFilters?: CoreTypes.CurrencyFilter[];
+  /** Optional list of currency codes to include in addition to those matched by `currencyFilters`. */
+  additionalCurrencies?: string[];
 }
