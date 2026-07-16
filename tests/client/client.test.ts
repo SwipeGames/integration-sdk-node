@@ -219,6 +219,62 @@ describe("SwipeGamesClient", () => {
       const [url] = fetchMock.mock.calls[0];
       expect(url).not.toContain("excludeBetLines");
     });
+
+    it("includes currencyFilters query param as comma-separated string", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames({ currencyFilters: ["main_fiat", "main_crypto"] });
+
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toContain("currencyFilters=main_fiat%2Cmain_crypto");
+
+      const expectedSig = createQueryParamsSignature(
+        { cID: CLIENT_CONFIG.cid, extCID: CLIENT_CONFIG.extCid, currencyFilters: "main_fiat,main_crypto" },
+        CLIENT_CONFIG.apiKey
+      );
+      expect(opts.headers["X-REQUEST-SIGN"]).toBe(expectedSig);
+    });
+
+    it("includes additionalCurrencies query param as comma-separated string", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames({ currencyFilters: ["main"], additionalCurrencies: ["mETH", "uBTC"] });
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain("currencyFilters=main");
+      expect(url).toContain("additionalCurrencies=mETH%2CuBTC");
+    });
+
+    it("does not include currencyFilters when array is empty", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames({ currencyFilters: [] });
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).not.toContain("currencyFilters");
+    });
+
+    it("does not include additionalCurrencies when array is empty", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await client.getGames({ currencyFilters: ["main"], additionalCurrencies: [] });
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain("currencyFilters");
+      expect(url).not.toContain("additionalCurrencies");
+    });
   });
 
   describe("createFreeRounds", () => {
