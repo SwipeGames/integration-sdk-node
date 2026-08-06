@@ -19,6 +19,8 @@ import type {
   CreateNewGameResponse,
   CreateFreeRoundsParams,
   CreateFreeRoundsResponse,
+  GetFreeRoundsParams,
+  FreeRoundsInfo,
   CancelFreeRoundsParams,
   GetGamesOptions,
 } from "./types.js";
@@ -122,6 +124,21 @@ export class SwipeGamesClient {
     }
 
     return this.post<CreateFreeRoundsResponse>("/free-rounds", parsed.data);
+  }
+
+  /** Get the current state of a free rounds campaign by its internal id or external extID. */
+  async getFreeRounds(params: GetFreeRoundsParams): Promise<FreeRoundsInfo> {
+    const queryParams: Record<string, string> = {
+      cID: this.cid,
+      extCID: this.extCid,
+    };
+    if (params.id) {
+      queryParams.id = params.id;
+    }
+    if (params.extID) {
+      queryParams.extID = params.extID;
+    }
+    return this.get<FreeRoundsInfo>("/free-rounds", queryParams);
   }
 
   /** Cancel/delete an existing free rounds campaign. */

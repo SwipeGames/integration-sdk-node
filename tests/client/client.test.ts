@@ -103,6 +103,26 @@ describe("SwipeGamesClient", () => {
       expect(opts.headers["X-REQUEST-SIGN"]).toBe(expectedSig);
     });
 
+    it("forwards fallbackToDefaultLocale in the request body", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ gameURL: "https://game.url", gsID: "gs-123" }),
+      });
+
+      await client.createNewGame({
+        gameID: "sg_catch_97",
+        demo: false,
+        platform: "desktop",
+        currency: "USD",
+        locale: "xx_yy",
+        fallbackToDefaultLocale: true,
+      });
+
+      const [, opts] = fetchMock.mock.calls[0];
+      const sentBody = JSON.parse(opts.body);
+      expect(sentBody.fallbackToDefaultLocale).toBe(true);
+    });
+
     it("throws SwipeGamesApiError on non-200 with status, code, and details", async () => {
       fetchMock.mockResolvedValue({
         ok: false,
@@ -315,6 +335,66 @@ describe("SwipeGamesClient", () => {
           validFrom: "not-a-date",
         } as any)
       ).rejects.toThrow(SwipeGamesValidationError);
+    });
+  });
+
+  describe("getFreeRounds", () => {
+    it("sends signed GET to /free-rounds with id query param", async () => {
+      const mockResponse = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        extID: "ext-fr-1",
+        quantity: 10,
+        maxBet: "0.10",
+        maxMult: 5,
+        currency: "USD",
+        validFrom: "2026-01-01T00:00:00.000Z",
+      };
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await client.getFreeRounds({ id: "550e8400-e29b-41d4-a716-446655440000" });
+
+      expect(result).toEqual(mockResponse);
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toContain("/free-rounds");
+      expect(url).toContain(`cID=${CLIENT_CONFIG.cid}`);
+      expect(url).toContain(`extCID=${CLIENT_CONFIG.extCid}`);
+      expect(url).toContain("id=550e8400-e29b-41d4-a716-446655440000");
+      expect(opts.method).toBe("GET");
+
+      // Verify signature includes the id param
+      const expectedSig = createQueryParamsSignature(
+        { cID: CLIENT_CONFIG.cid, extCID: CLIENT_CONFIG.extCid, id: "550e8400-e29b-41d4-a716-446655440000" },
+        CLIENT_CONFIG.apiKey
+      );
+      expect(opts.headers["X-REQUEST-SIGN"]).toBe(expectedSig);
+    });
+
+    it("sends signed GET to /free-rounds with extID query param", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      await client.getFreeRounds({ extID: "ext-fr-1" });
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain("extID=ext-fr-1");
+      expect(url).not.toContain("id=");
+    });
+
+    it("throws SwipeGamesApiError on 404 when campaign not found", async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ message: "Free rounds campaign not found" }),
+      });
+
+      await expect(
+        client.getFreeRounds({ extID: "missing" })
+      ).rejects.toThrow(SwipeGamesApiError);
     });
   });
 
