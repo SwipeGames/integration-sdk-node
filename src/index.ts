@@ -7,6 +7,8 @@ export type {
   CreateNewGameResponse,
   CreateFreeRoundsParams,
   CreateFreeRoundsResponse,
+  GetFreeRoundsParams,
+  FreeRoundsInfo,
   CancelFreeRoundsParams,
   GetGamesOptions,
 } from "./client/types.js";
