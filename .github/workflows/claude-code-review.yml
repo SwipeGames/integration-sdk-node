@@ -60,16 +60,13 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    uses: SwipeGames/agentic-review/.github/workflows/claude-code-review.yml@main
+    uses: SwipeGames/agentic-review/.github/workflows/claude-code-review-litellm.yml@main
     with:
       pr_number: ${{ github.event.issue.number }}
       comment_id: ${{ github.event.comment.id }}
       checkout_docs_internal: false
       language_hint: "typescript"
-      use_bedrock: true
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-      BEDROCK_API_KEY: ${{ secrets.BEDROCK_API_KEY }}
-      BEDROCK_REGION: ${{ secrets.BEDROCK_REGION }}
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      LITELLM_CLAUDE_API_KEY: ${{ secrets.LITELLM_CLAUDE_API_KEY }}
