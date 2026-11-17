@@ -162,6 +162,39 @@ describe("SwipeGamesClient", () => {
       ).rejects.toThrow(SwipeGamesValidationError);
     });
 
+    it("forwards a non-negative initDemoBalance in the request body", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ gameURL: "https://game.url", gsID: "gs-123" }),
+      });
+
+      await client.createNewGame({
+        gameID: "sg_catch_97",
+        demo: true,
+        platform: "desktop",
+        currency: "USD",
+        locale: "en_us",
+        initDemoBalance: "10000.00",
+      });
+
+      const [, opts] = fetchMock.mock.calls[0];
+      const sentBody = JSON.parse(opts.body);
+      expect(sentBody.initDemoBalance).toBe("10000.00");
+    });
+
+    it("throws SwipeGamesValidationError on a signed initDemoBalance", async () => {
+      await expect(
+        client.createNewGame({
+          gameID: "sg_catch_97",
+          demo: true,
+          platform: "desktop",
+          currency: "USD",
+          locale: "en_us",
+          initDemoBalance: "-5.00", // signed value is rejected
+        })
+      ).rejects.toThrow(SwipeGamesValidationError);
+    });
+
     it("uses statusText when error response is not valid JSON", async () => {
       fetchMock.mockResolvedValue({
         ok: false,
@@ -335,6 +368,27 @@ describe("SwipeGamesClient", () => {
           validFrom: "not-a-date",
         } as any)
       ).rejects.toThrow(SwipeGamesValidationError);
+    });
+
+    it("accepts quantity and betLine above 99 (no upper bound)", async () => {
+      const mockResponse = { id: "fr-124", extID: "ext-fr-2" };
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await client.createFreeRounds({
+        extID: "ext-fr-2",
+        currency: "USD",
+        quantity: 500,
+        betLine: 120,
+        validFrom: "2026-01-01T00:00:00.000Z",
+      });
+
+      const [, opts] = fetchMock.mock.calls[0];
+      const sentBody = JSON.parse(opts.body);
+      expect(sentBody.quantity).toBe(500);
+      expect(sentBody.betLine).toBe(120);
     });
   });
 
