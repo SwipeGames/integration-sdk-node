@@ -1,3 +1,6 @@
+# Runs tests and type checking on every PR to main.
+# Needs no secrets: all dependencies come from the public npm registry,
+# so it also works for Dependabot PRs, which get no Actions secrets.
 name: PR checks
 
 on:
@@ -7,19 +10,11 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-      - name: Generate a token
-        id: generate-token
-        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc
-        with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -27,15 +22,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://npm.pkg.github.com
-          scope: "@swipegames"
           cache: npm
 
       - name: Install dependencies
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ steps.generate-token.outputs.token }}
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
 
       - name: Run tests
         run: npm test
